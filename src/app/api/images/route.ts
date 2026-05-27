@@ -4,18 +4,44 @@ import fs from 'fs';
 import path from 'path';
 
 export async function GET() {
-  // Produção: lê do Vercel Blob
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { blobs } = await list({ prefix: 'selos/' });
-      const images = blobs
-        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-        .map((blob) => ({
-          filename: blob.pathname.replace('selos/', ''),
-          name: blob.pathname.replace('selos/', '').replace(/\.[^.]+$/, ''),
-          src: blob.url,
-        }));
-      return NextResponse.json({ images });
+
+      const orderBlob = blobs.find((b) => b.pathname === 'selos/_order.json');
+      const imageBlobs = blobs.filter((b) => b.pathname !== 'selos/_order.json');
+
+      let order: string[] | null = null;
+      if (orderBlob) {
+        try {
+          const res = await fetch(orderBlob.url, { cache: 'no-store' });
+          order = await res.json();
+        } catch { /* ignore */ }
+      }
+
+      const images = imageBlobs.map((blob) => ({
+        filename: blob.pathname.replace('selos/', ''),
+        name: blob.pathname.replace('selos/', '').replace(/\.[^.]+$/, ''),
+        src: blob.url,
+        _uploadedAt: blob.uploadedAt,
+      }));
+
+      if (order && order.length > 0) {
+        images.sort((a, b) => {
+          const ai = order!.indexOf(a.src);
+          const bi = order!.indexOf(b.src);
+          if (ai === -1 && bi === -1) return new Date(b._uploadedAt).getTime() - new Date(a._uploadedAt).getTime();
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        });
+      } else {
+        images.sort((a, b) => new Date(b._uploadedAt).getTime() - new Date(a._uploadedAt).getTime());
+      }
+
+      return NextResponse.json({
+        images: images.map(({ _uploadedAt: _, ...rest }) => rest),
+      });
     } catch {
       return NextResponse.json({ images: [] });
     }

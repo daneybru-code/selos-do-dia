@@ -7,11 +7,12 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
-  const { url } = await request.json();
-  if (!url) {
+  const body = await request.json();
+  const urls: string[] = body.urls ?? (body.url ? [body.url] : []);
+  if (!urls.length) {
     return NextResponse.json({ error: 'URL não informada' }, { status: 400 });
   }
 
-  await del(url);
+  await del(urls);
   return NextResponse.json({ success: true });
 }

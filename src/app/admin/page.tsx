@@ -18,6 +18,14 @@ export default function AdminPage() {
   const [uploadMsg, setUploadMsg]         = useState<{ text: string; ok: boolean } | null>(null);
   const [dragOver, setDragOver]           = useState(false);
   const [deleting, setDeleting]           = useState<string | null>(null);
+  // Seleção múltipla
+  const [selectMode, setSelectMode]       = useState(false);
+  const [selected, setSelected]           = useState<Set<string>>(new Set());
+  const [deletingBulk, setDeletingBulk]   = useState(false);
+  // Reordenação por drag
+  const [dragIndex, setDragIndex]         = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [saving, setSaving]               = useState(false);
   const fileInputRef                      = useRef<HTMLInputElement>(null);
   const storedPw                          = useRef('');
 
@@ -32,7 +40,7 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Lista imagens do Blob ── */
+  /* ── Lista imagens ── */
   const fetchImages = useCallback(async () => {
     setLoading(true);
     try {
@@ -91,26 +99,94 @@ export default function AdminPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [fetchImages]);
 
-  const onDrop = useCallback((e: React.DragEvent) => {
+  const onFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     uploadFiles(Array.from(e.dataTransfer.files));
   }, [uploadFiles]);
 
-  /* ── Delete ── */
+  /* ── Delete individual ── */
   const handleDelete = async (image: BlobImage) => {
     if (!confirm(`Remover "${image.name}"?`)) return;
     setDeleting(image.src);
     await fetch('/api/delete', {
       method:  'DELETE',
-      headers: {
-        'Content-Type':    'application/json',
-        'x-admin-password': storedPw.current,
-      },
-      body: JSON.stringify({ url: image.src }),
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': storedPw.current },
+      body:    JSON.stringify({ url: image.src }),
     });
     setDeleting(null);
     fetchImages();
+  };
+
+  /* ── Delete em massa ── */
+  const handleBulkDelete = async () => {
+    if (!selected.size) return;
+    if (!confirm(`Remover ${selected.size} selo(s) selecionado(s)?`)) return;
+    setDeletingBulk(true);
+    await fetch('/api/delete', {
+      method:  'DELETE',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': storedPw.current },
+      body:    JSON.stringify({ urls: Array.from(selected) }),
+    });
+    setDeletingBulk(false);
+    setSelected(new Set());
+    setSelectMode(false);
+    fetchImages();
+  };
+
+  const toggleSelect = (src: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === images.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(images.map((img) => img.src)));
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelected(new Set());
+  };
+
+  /* ── Drag reorder ── */
+  const handleCardDragStart = (index: number) => setDragIndex(index);
+
+  const handleCardDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragIndex !== null) setDragOverIndex(index);
+  };
+
+  const handleCardDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    if (dragIndex === null || dragIndex === dropIndex) { setDragIndex(null); return; }
+
+    const reordered = [...images];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+    setImages(reordered);
+    setDragIndex(null);
+
+    setSaving(true);
+    await fetch('/api/reorder', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': storedPw.current },
+      body:    JSON.stringify({ order: reordered.map((img) => img.src) }),
+    });
+    setSaving(false);
+  };
+
+  const handleCardDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
   };
 
   /* ══════════════ TELA DE LOGIN ══════════════ */
@@ -141,11 +217,9 @@ export default function AdminPage() {
               style={{ backgroundColor: '#2a2a2a', borderColor: authError ? '#CC0000' : 'transparent' }}
               autoFocus
             />
-
             {authError && (
               <p className="text-red-400 text-sm text-center">{authError}</p>
             )}
-
             <button
               type="submit"
               className="w-full py-3 rounded-xl font-bold text-white uppercase tracking-wider transition-opacity hover:opacity-90 active:scale-95"
@@ -171,10 +245,7 @@ export default function AdminPage() {
             <img src="/logo.png" alt="Globo Esporte" className="h-9 object-contain" />
             <span className="text-white font-bold">Admin — Selos do Dia</span>
           </div>
-          <a
-            href="/"
-            className="text-white/80 hover:text-white text-sm transition-colors"
-          >
+          <a href="/" className="text-white/80 hover:text-white text-sm transition-colors">
             ← Ver galeria
           </a>
         </div>
@@ -189,12 +260,16 @@ export default function AdminPage() {
           <div
             className="rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all"
             style={{
-              borderColor: dragOver ? '#FF6600' : '#444',
+              borderColor:     dragOver ? '#FF6600' : '#444',
               backgroundColor: dragOver ? 'rgba(255,102,0,0.08)' : 'transparent',
             }}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              // só ativa se estiver arrastando arquivos, não cards
+              if ([...e.dataTransfer.types].includes('Files')) setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
+            onDrop={onFileDrop}
             onClick={() => !uploading && fileInputRef.current?.click()}
           >
             <input
@@ -236,20 +311,73 @@ export default function AdminPage() {
 
         {/* ── Imagens publicadas ── */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+
+          {/* Cabeçalho da seção */}
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-white font-bold text-lg">
               Selos publicados{' '}
-              <span className="text-gray-500 font-normal text-sm">
-                ({images.length})
-              </span>
+              <span className="text-gray-500 font-normal text-sm">({images.length})</span>
             </h2>
-            <button
-              onClick={fetchImages}
-              className="text-gray-400 hover:text-white text-sm transition-colors"
-            >
-              ↻ Atualizar
-            </button>
+
+            <div className="flex items-center gap-3">
+              {saving && (
+                <span className="text-xs" style={{ color: '#888' }}>Salvando ordem…</span>
+              )}
+
+              {selectMode ? (
+                <>
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-sm transition-colors"
+                    style={{ color: '#aaa' }}
+                  >
+                    {selected.size === images.length ? 'Desmarcar tudo' : 'Selecionar tudo'}
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={!selected.size || deletingBulk}
+                    className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-40"
+                    style={{ backgroundColor: '#CC0000' }}
+                  >
+                    {deletingBulk ? 'Removendo…' : `Excluir${selected.size ? ` (${selected.size})` : ''}`}
+                  </button>
+                  <button
+                    onClick={exitSelectMode}
+                    className="text-sm transition-colors"
+                    style={{ color: '#888' }}
+                  >
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <>
+                  {images.length > 0 && (
+                    <button
+                      onClick={() => setSelectMode(true)}
+                      className="text-sm transition-colors hover:text-white"
+                      style={{ color: '#888' }}
+                    >
+                      Selecionar
+                    </button>
+                  )}
+                  <button
+                    onClick={fetchImages}
+                    className="text-sm transition-colors hover:text-white"
+                    style={{ color: '#888' }}
+                  >
+                    ↻ Atualizar
+                  </button>
+                </>
+              )}
+            </div>
           </div>
+
+          {/* Dica de reordenação */}
+          {!selectMode && images.length > 1 && (
+            <p className="text-xs mb-4" style={{ color: '#555' }}>
+              Arraste os selos para reordenar. A ordem é salva automaticamente.
+            </p>
+          )}
 
           {loading ? (
             <div className="flex justify-center py-16">
@@ -266,48 +394,105 @@ export default function AdminPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {images.map((image) => (
-                <div
-                  key={image.src}
-                  className="group relative rounded-xl overflow-hidden"
-                  style={{ backgroundColor: '#1A1A1A' }}
-                >
-                  {/* Thumbnail */}
-                  <div className="aspect-video overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={image.src}
-                      alt={image.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
+              {images.map((image, index) => {
+                const isSelected    = selected.has(image.src);
+                const isDragging    = dragIndex === index;
+                const isDragTarget  = dragOverIndex === index && dragIndex !== index;
 
-                  {/* Label */}
-                  <div className="px-2 py-2">
-                    <p
-                      className="text-xs truncate font-medium"
-                      style={{ color: '#FFD700' }}
-                      title={image.name}
-                    >
-                      {image.name}
-                    </p>
-                  </div>
-
-                  {/* Botão remover */}
-                  <button
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-white text-base font-bold opacity-0 group-hover:opacity-100 transition-all"
+                return (
+                  <div
+                    key={image.src}
+                    className="group relative rounded-xl overflow-hidden select-none"
                     style={{
-                      backgroundColor: deleting === image.src ? '#555' : '#CC0000',
+                      backgroundColor: '#1A1A1A',
+                      border:   `2px solid ${isSelected || isDragTarget ? '#FF6600' : 'transparent'}`,
+                      opacity:  isDragging ? 0.4 : 1,
+                      cursor:   selectMode ? 'pointer' : 'grab',
+                      transition: 'border-color 0.15s, opacity 0.15s, box-shadow 0.15s',
+                      boxShadow: isDragTarget ? '0 0 0 2px rgba(255,102,0,0.3)' : undefined,
                     }}
-                    onClick={() => handleDelete(image)}
-                    disabled={deleting === image.src}
-                    title="Remover selo"
+                    draggable={!selectMode}
+                    onDragStart={() => handleCardDragStart(index)}
+                    onDragOver={(e) => handleCardDragOver(e, index)}
+                    onDrop={(e) => handleCardDrop(e, index)}
+                    onDragEnd={handleCardDragEnd}
+                    onClick={() => selectMode && toggleSelect(image.src)}
                   >
-                    {deleting === image.src ? '…' : '×'}
-                  </button>
-                </div>
-              ))}
+                    {/* Thumbnail */}
+                    <div className="aspect-video overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image.src}
+                        alt={image.name}
+                        className="w-full h-full object-cover pointer-events-none"
+                        loading="lazy"
+                        draggable={false}
+                      />
+                    </div>
+
+                    {/* Label */}
+                    <div className="px-2 py-2">
+                      <p
+                        className="text-xs truncate font-medium"
+                        style={{ color: '#FFD700' }}
+                        title={image.name}
+                      >
+                        {image.name}
+                      </p>
+                    </div>
+
+                    {/* Modo seleção: checkbox */}
+                    {selectMode && (
+                      <div className="absolute top-2 left-2">
+                        <div
+                          className="w-5 h-5 rounded flex items-center justify-center border-2 transition-colors"
+                          style={{
+                            backgroundColor: isSelected ? '#FF6600' : 'rgba(0,0,0,0.6)',
+                            borderColor:     isSelected ? '#FF6600' : 'rgba(255,255,255,0.4)',
+                          }}
+                        >
+                          {isSelected && (
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <polyline points="1.5,5 4,7.5 8.5,2" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Modo normal: ícone drag handle + botão excluir */}
+                    {!selectMode && (
+                      <>
+                        {/* Drag handle */}
+                        <div
+                          className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5"
+                          style={{ backgroundColor: 'rgba(0,0,0,0.5)', cursor: 'grab' }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="#ccc">
+                            <circle cx="3.5" cy="2.5" r="1.1"/>
+                            <circle cx="8.5" cy="2.5" r="1.1"/>
+                            <circle cx="3.5" cy="6"   r="1.1"/>
+                            <circle cx="8.5" cy="6"   r="1.1"/>
+                            <circle cx="3.5" cy="9.5" r="1.1"/>
+                            <circle cx="8.5" cy="9.5" r="1.1"/>
+                          </svg>
+                        </div>
+
+                        {/* Botão remover */}
+                        <button
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-white text-base font-bold opacity-0 group-hover:opacity-100 transition-all"
+                          style={{ backgroundColor: deleting === image.src ? '#555' : '#CC0000' }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(image); }}
+                          disabled={deleting === image.src}
+                          title="Remover selo"
+                        >
+                          {deleting === image.src ? '…' : '×'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

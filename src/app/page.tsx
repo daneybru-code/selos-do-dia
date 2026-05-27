@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { list } from '@vercel/blob';
 import Gallery from '@/components/Gallery';
 
 export interface ImageData {
@@ -8,21 +9,34 @@ export interface ImageData {
   src: string;
 }
 
-async function getImages(): Promise<ImageData[]> {
-  try {
-    const selosDir = path.join(process.cwd(), 'public', 'selos');
+// Sempre busca dados frescos (não cacheia)
+export const dynamic = 'force-dynamic';
 
-    if (!fs.existsSync(selosDir)) {
+async function getImages(): Promise<ImageData[]> {
+  // Produção: lê do Vercel Blob
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const { blobs } = await list({ prefix: 'selos/' });
+      return blobs
+        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+        .map((blob) => ({
+          filename: blob.pathname.replace('selos/', ''),
+          name: blob.pathname.replace('selos/', '').replace(/\.[^.]+$/, ''),
+          src: blob.url,
+        }));
+    } catch {
       return [];
     }
+  }
 
+  // Dev local: lê da pasta public/selos/
+  try {
+    const selosDir = path.join(process.cwd(), 'public', 'selos');
+    if (!fs.existsSync(selosDir)) return [];
     const files = fs.readdirSync(selosDir);
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-
     return files
-      .filter((file) =>
-        imageExtensions.includes(path.extname(file).toLowerCase())
-      )
+      .filter((file) => imageExtensions.includes(path.extname(file).toLowerCase()))
       .map((file) => ({
         filename: file,
         name: path.basename(file, path.extname(file)),
@@ -44,7 +58,7 @@ function getFormattedDate(): string {
 
 export default async function Home() {
   const images = await getImages();
-  const date = getFormattedDate();
+  const date   = getFormattedDate();
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: '#0D0D0D' }}>
@@ -52,14 +66,9 @@ export default async function Home() {
       {/* ── HEADER ── */}
       <header
         className="w-full"
-        style={{
-          background:
-            'linear-gradient(135deg, #CC0000 0%, #FF6600 55%, #FFC200 100%)',
-        }}
+        style={{ background: 'linear-gradient(135deg, #CC0000 0%, #FF6600 55%, #FFC200 100%)' }}
       >
         <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col items-center gap-3">
-
-          {/* Logo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
@@ -67,21 +76,13 @@ export default async function Home() {
             className="h-14 sm:h-20 object-contain"
             style={{ filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.5))' }}
           />
-
-          {/* Título */}
           <h1
             className="text-white text-3xl sm:text-4xl font-black uppercase tracking-widest"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
           >
             Selos do Dia
           </h1>
-
-          {/* Data */}
-          <p className="text-white/90 text-base sm:text-lg capitalize font-medium">
-            {date}
-          </p>
-
-          {/* Contador */}
+          <p className="text-white/90 text-base sm:text-lg capitalize font-medium">{date}</p>
           {images.length > 0 && (
             <span className="bg-black/25 text-white text-sm font-semibold px-4 py-1 rounded-full">
               {images.length} {images.length === 1 ? 'selo' : 'selos'}
@@ -94,10 +95,7 @@ export default async function Home() {
       <Gallery images={images} />
 
       {/* ── FOOTER ── */}
-      <footer
-        className="text-center py-8 text-sm"
-        style={{ color: '#444' }}
-      >
+      <footer className="text-center py-8 text-sm" style={{ color: '#444' }}>
         Globo Esporte · Selos do Dia
       </footer>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
-import { ImageData } from '@/app/page';
+import { ImageData } from '@/types';
 
 interface LightboxProps {
   images: ImageData[];

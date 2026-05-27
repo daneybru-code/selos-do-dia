@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ImageData } from '@/app/page';
+import { ImageData } from '@/types';
 import Lightbox from './Lightbox';
 
 interface GalleryProps {

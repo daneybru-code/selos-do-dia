@@ -1,36 +1,36 @@
 {
-  "generated": "2026-05-27T12:18:14.453Z",
+  "generated": "2026-05-27T13:47:27.971Z",
   "total": 6,
   "images": [
     {
-      "filename": "DUET POSTAGEM YAGO.png",
-      "name": "DUET POSTAGEM YAGO",
-      "src": "/selos/DUET%20POSTAGEM%20YAGO.png"
+      "filename": "BRASILEIRÃO SÉRIE B – SPORT X NÁUTICO.png",
+      "name": "BRASILEIRÃO SÉRIE B – SPORT X NÁUTICO",
+      "src": "/selos/BRASILEIR%C3%83O%20S%C3%89RIE%20B%20%E2%80%93%20SPORT%20X%20N%C3%81UTICO.png"
     },
     {
-      "filename": "SELO CRISTIANO RONALDO.png",
-      "name": "SELO CRISTIANO RONALDO",
-      "src": "/selos/SELO%20CRISTIANO%20RONALDO.png"
+      "filename": "BRASILEIRÃO SÉRIE C – SANTA CRUZ X FERROVIÁRIA-SP.png",
+      "name": "BRASILEIRÃO SÉRIE C – SANTA CRUZ X FERROVIÁRIA-SP",
+      "src": "/selos/BRASILEIR%C3%83O%20S%C3%89RIE%20C%20%E2%80%93%20SANTA%20CRUZ%20X%20FERROVI%C3%81RIA-SP.png"
     },
     {
-      "filename": "selo figurinhas.jpeg",
-      "name": "selo figurinhas",
-      "src": "/selos/selo%20figurinhas.jpeg"
+      "filename": "COPA DO NORDESTE – SPORT X FORTALEZA.png",
+      "name": "COPA DO NORDESTE – SPORT X FORTALEZA",
+      "src": "/selos/COPA%20DO%20NORDESTE%20%E2%80%93%20SPORT%20X%20FORTALEZA.png"
     },
     {
-      "filename": "SELO RETROSPECTO ATAQUE.png",
-      "name": "SELO RETROSPECTO ATAQUE",
-      "src": "/selos/SELO%20RETROSPECTO%20ATAQUE.png"
-    },
-    {
-      "filename": "SELO SANTA X FERROVIARIA DOMINGO.png",
-      "name": "SELO SANTA X FERROVIARIA DOMINGO",
-      "src": "/selos/SELO%20SANTA%20X%20FERROVIARIA%20DOMINGO.png"
+      "filename": "selo felipe alves saída.png",
+      "name": "selo felipe alves saída",
+      "src": "/selos/selo%20felipe%20alves%20sa%C3%ADda.png"
     },
     {
       "filename": "SELO SPORT X NAUTICO SÁBADO 26.05.png",
       "name": "SELO SPORT X NAUTICO SÁBADO 26.05",
       "src": "/selos/SELO%20SPORT%20X%20NAUTICO%20S%C3%81BADO%2026.05.png"
+    },
+    {
+      "filename": "SPORT NA COPA DO NORDESTE.png",
+      "name": "SPORT NA COPA DO NORDESTE",
+      "src": "/selos/SPORT%20NA%20COPA%20DO%20NORDESTE.png"
     }
   ]
 }

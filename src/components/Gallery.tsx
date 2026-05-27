@@ -14,19 +14,41 @@ export default function Gallery({ images }: GalleryProps) {
   /* ── Estado vazio ── */
   if (images.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 px-4">
-        <div className="text-7xl select-none">📁</div>
-        <p className="text-gray-400 text-xl font-semibold">Nenhum selo encontrado</p>
-        <p className="text-gray-600 text-sm text-center max-w-sm leading-relaxed">
-          Adicione imagens na pasta{' '}
-          <code
-            className="px-2 py-0.5 rounded text-sm"
-            style={{ backgroundColor: '#1a1a1a', color: '#FF6600' }}
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-6 px-4 py-16">
+        {/* Ícone com brilho laranja */}
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center"
+          style={{
+            background: 'radial-gradient(circle, rgba(255,102,0,0.15) 0%, rgba(255,102,0,0.05) 70%, transparent 100%)',
+            border: '2px solid rgba(255,102,0,0.2)',
+            boxShadow: '0 0 32px rgba(255,102,0,0.1)',
+          }}
+        >
+          <svg
+            width="36"
+            height="36"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#FF6600"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ opacity: 0.7 }}
           >
-            public/selos/
-          </code>{' '}
-          para que elas apareçam aqui.
-        </p>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        </div>
+
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="font-bold text-lg" style={{ color: '#888' }}>
+            Nenhum selo disponível hoje
+          </p>
+          <p className="text-sm max-w-xs leading-relaxed" style={{ color: '#555' }}>
+            Os selos do dia ainda não foram publicados. Volte mais tarde.
+          </p>
+        </div>
       </div>
     );
   }

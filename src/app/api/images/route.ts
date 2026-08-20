@@ -1,15 +1,29 @@
 import { NextResponse } from 'next/server';
 import { list } from '@vercel/blob';
+import { unstable_cache } from 'next/cache';
 import fs from 'fs';
 import path from 'path';
+
+// Evita gastar Blob Advanced Operations (list()) a cada visita da galeria:
+// o resultado fica em cache por 30s e é invalidado na hora por upload/delete/reorder.
+const getSelosBlobs = unstable_cache(
+  async () => {
+    const { blobs } = await list({ prefix: 'selos/' });
+    return blobs;
+  },
+  ['selos-blobs'],
+  { revalidate: 30, tags: ['selos-images'] }
+);
 
 export async function GET() {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { blobs } = await list({ prefix: 'selos/' });
+      const blobs = await getSelosBlobs();
 
       const orderBlob = blobs.find((b) => b.pathname === 'selos/_order.json');
-      const imageBlobs = blobs.filter((b) => b.pathname !== 'selos/_order.json');
+      const imageBlobs = blobs.filter(
+        (b) => b.pathname !== 'selos/_order.json' && !b.pathname.startsWith('selos/_annotations')
+      );
 
       let order: string[] | null = null;
       if (orderBlob) {
@@ -40,7 +54,10 @@ export async function GET() {
       }
 
       return NextResponse.json({
-        images: images.map(({ _uploadedAt: _, ...rest }) => rest),
+        images: images.map(({ _uploadedAt, ...rest }) => ({
+          ...rest,
+          uploadedAt: new Date(_uploadedAt).toISOString(),
+        })),
       });
     } catch {
       return NextResponse.json({ images: [] });
@@ -59,6 +76,7 @@ export async function GET() {
         filename: file,
         name: path.basename(file, path.extname(file)),
         src: `/selos/${encodeURIComponent(file)}`,
+        uploadedAt: fs.statSync(path.join(selosDir, file)).mtime.toISOString(),
       }));
     return NextResponse.json({ images });
   } catch {

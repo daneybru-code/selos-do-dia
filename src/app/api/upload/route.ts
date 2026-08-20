@@ -1,5 +1,8 @@
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const password = request.headers.get('x-admin-password');
@@ -29,6 +32,8 @@ export async function POST(request: NextRequest) {
       })
     )
   );
+
+  revalidateTag('selos-images');
 
   return NextResponse.json({
     uploaded: uploaded.map((b) => ({ url: b.url, pathname: b.pathname })),

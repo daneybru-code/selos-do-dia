@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Annotations } from '@/types';
 
 interface BlobImage {
   filename: string;
   name: string;
   src: string;
+  uploadedAt?: string;
 }
+
+const LAST_SEEN_KEY = 'selos_admin_last_seen';
 
 export default function AdminPage() {
   const [authed, setAuthed]               = useState(false);
@@ -22,12 +26,17 @@ export default function AdminPage() {
   const [selectMode, setSelectMode]       = useState(false);
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [deletingBulk, setDeletingBulk]   = useState(false);
+  const [annotations, setAnnotations]     = useState<Annotations>({});
   // Reordenação por drag
   const [dragIndex, setDragIndex]         = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [saving, setSaving]               = useState(false);
+  const [newCount, setNewCount]           = useState(0);
   const fileInputRef                      = useRef<HTMLInputElement>(null);
   const storedPw                          = useRef('');
+  // true quando o próximo fetchImages() é resultado de uma ação do próprio
+  // admin (upload/delete), pra não notificar a pessoa sobre a própria ação
+  const skipNextNotifyRef                 = useRef(false);
 
   /* ── Restaura sessão ── */
   useEffect(() => {
@@ -40,16 +49,41 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Lista imagens ── */
+  /* ── Lista imagens + anotações ── */
   const fetchImages = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch('/api/images');
-      const data = await res.json();
-      setImages(data.images ?? []);
+      const [imgRes, annRes] = await Promise.all([
+        fetch('/api/images'),
+        fetch('/api/annotations'),
+      ]);
+      const imgData = await imgRes.json();
+      const list: BlobImage[] = imgData.images ?? [];
+      setImages(list);
+      if (annRes.ok) setAnnotations(await annRes.json());
+
+      // ── Notificação de novos selos publicados desde a última visita ──
+      const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+      const wasOwnAction = skipNextNotifyRef.current;
+      skipNextNotifyRef.current = false;
+
+      if (!lastSeen || wasOwnAction) {
+        // primeira visita ou ação do próprio admin: não há nada "novo" pra avisar
+        localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+        setNewCount(0);
+      } else {
+        const count = list.filter((img) => img.uploadedAt && img.uploadedAt > lastSeen).length;
+        setNewCount(count);
+      }
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  /* ── Marca notificações como vistas ── */
+  const markSeen = useCallback(() => {
+    localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+    setNewCount(0);
   }, []);
 
   /* ── Login ── */
@@ -70,31 +104,40 @@ export default function AdminPage() {
     }
   };
 
-  /* ── Upload ── */
+  /* ── Upload (uma por uma para não estourar o limite de 4,5 MB) ── */
   const uploadFiles = useCallback(async (files: File[]) => {
     const imgs = files.filter((f) => f.type.startsWith('image/'));
     if (!imgs.length) return;
 
     setUploading(true);
-    setUploadMsg({ text: `Enviando ${imgs.length} imagem(ns)…`, ok: true });
+    let done = 0;
 
-    const form = new FormData();
-    imgs.forEach((f) => form.append('files', f));
+    for (const img of imgs) {
+      setUploadMsg({ text: `Enviando ${done + 1} de ${imgs.length}…`, ok: true });
 
-    const res = await fetch('/api/upload', {
-      method:  'POST',
-      headers: { 'x-admin-password': storedPw.current },
-      body:    form,
-    });
+      const form = new FormData();
+      form.append('files', img);
 
-    if (res.ok) {
-      const data = await res.json();
-      setUploadMsg({ text: `✅ ${data.uploaded.length} imagem(ns) enviada(s)!`, ok: true });
-      fetchImages();
-    } else {
-      const err = await res.json();
-      setUploadMsg({ text: `❌ ${err.error ?? 'Erro ao enviar'}`, ok: false });
+      const res = await fetch('/api/upload', {
+        method:  'POST',
+        headers: { 'x-admin-password': storedPw.current },
+        body:    form,
+      });
+
+      if (res.ok) {
+        done++;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setUploadMsg({ text: `❌ Erro em "${img.name}": ${err.error ?? 'falha no envio'}`, ok: false });
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
     }
+
+    setUploadMsg({ text: `✅ ${done} imagem(ns) enviada(s)!`, ok: true });
+    skipNextNotifyRef.current = true;
+    fetchImages();
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [fetchImages]);
@@ -245,9 +288,31 @@ export default function AdminPage() {
             <img src="/logo.png" alt="Globo Esporte" className="h-9 object-contain" />
             <span className="text-white font-bold">Admin — Selos do Dia</span>
           </div>
-          <a href="/" className="text-white/80 hover:text-white text-sm transition-colors">
-            ← Ver galeria
-          </a>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={markSeen}
+              title={newCount > 0 ? `${newCount} selo(s) novo(s) desde sua última visita` : 'Sem novidades'}
+              className="relative text-white/80 hover:text-white transition-colors"
+            >
+              🔔
+              {newCount > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  style={{ backgroundColor: '#CC0000' }}
+                >
+                  {newCount}
+                </span>
+              )}
+            </button>
+            {process.env.NEXT_PUBLIC_ENABLE_EDITOR === 'true' && (
+              <a href="/editor" className="text-white/80 hover:text-white text-sm transition-colors">
+                Editor de Arte
+              </a>
+            )}
+            <a href="/" className="text-white/80 hover:text-white text-sm transition-colors">
+              ← Ver galeria
+            </a>
+          </div>
         </div>
       </header>
 
@@ -398,6 +463,7 @@ export default function AdminPage() {
                 const isSelected    = selected.has(image.src);
                 const isDragging    = dragIndex === index;
                 const isDragTarget  = dragOverIndex === index && dragIndex !== index;
+                const ann           = annotations[image.filename] ?? { approved: false, rejected: false, note: '' };
 
                 return (
                   <div
@@ -405,11 +471,11 @@ export default function AdminPage() {
                     className="group relative rounded-xl overflow-hidden select-none"
                     style={{
                       backgroundColor: '#1A1A1A',
-                      border:   `2px solid ${isSelected || isDragTarget ? '#FF6600' : 'transparent'}`,
+                      border:   `2px solid ${ann.approved ? '#4ade80' : ann.rejected ? '#f87171' : isSelected || isDragTarget ? '#FF6600' : 'transparent'}`,
                       opacity:  isDragging ? 0.4 : 1,
                       cursor:   selectMode ? 'pointer' : 'grab',
                       transition: 'border-color 0.15s, opacity 0.15s, box-shadow 0.15s',
-                      boxShadow: isDragTarget ? '0 0 0 2px rgba(255,102,0,0.3)' : undefined,
+                      boxShadow: ann.approved ? '0 0 14px rgba(74,222,128,0.2)' : ann.rejected ? '0 0 14px rgba(248,113,113,0.2)' : isDragTarget ? '0 0 0 2px rgba(255,102,0,0.3)' : undefined,
                     }}
                     draggable={!selectMode}
                     onDragStart={() => handleCardDragStart(index)}
@@ -430,15 +496,33 @@ export default function AdminPage() {
                       />
                     </div>
 
-                    {/* Label */}
-                    <div className="px-2 py-2">
-                      <p
-                        className="text-xs truncate font-medium"
-                        style={{ color: '#FFD700' }}
-                        title={image.name}
-                      >
-                        {image.name}
-                      </p>
+                    {/* Label + anotações */}
+                    <div className="px-2 pt-2 pb-2 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        {ann.approved && (
+                          <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#4ade80', color: '#052e16' }}>✓</span>
+                        )}
+                        {ann.rejected && (
+                          <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#f87171', color: '#7f1d1d' }}>✗ Caiu</span>
+                        )}
+                        <p
+                          className="text-xs truncate font-medium"
+                          style={{ color: ann.approved ? '#4ade80' : ann.rejected ? '#f87171' : '#FFD700' }}
+                          title={image.name}
+                        >
+                          {image.name}
+                        </p>
+                      </div>
+                      {ann.note && (
+                        <div
+                          className="rounded-lg px-2 py-1.5"
+                          style={{ backgroundColor: '#252525', borderLeft: `2px solid ${ann.rejected ? '#f87171' : '#555'}` }}
+                        >
+                          <p className="text-xs leading-relaxed break-words whitespace-pre-wrap" style={{ color: '#aaa' }}>
+                            {ann.note}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Modo seleção: checkbox */}

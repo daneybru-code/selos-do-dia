@@ -60,6 +60,49 @@ git push
 | Tailwind   | 3.4     |
 | Vercel     | —       |
 
+## 🚧 Atualizando a galeria pública temporária (durante o bloqueio do Vercel Blob)
+
+A cota de **"Advanced Operations"** do Vercel Blob (plano Hobby, 2000/mês) foi esgotada no ciclo
+atual de cobrança. Enquanto isso, o site em produção na Vercel **não consegue ler nem gravar
+imagens via Blob** (galeria e painel admin ficam indisponíveis). A cota é renovada automaticamente
+em ~30 dias, mas para manter um link funcionando com os usuários finais nesse meio tempo, existe
+uma **galeria estática, somente leitura, hospedada de graça no GitHub Pages**, na pasta `/docs` da
+raiz do repositório — totalmente independente do Vercel Blob.
+
+Essa galeria estática é apenas um "espelho" das imagens que já estão em `public/selos/`. Ela **não
+tem** painel admin, aprovação/rejeição, exclusão em lote ou reordenação — é puramente para
+visualização pública enquanto o Vercel Blob está bloqueado.
+
+### Como adicionar novos selos enquanto o espelho estiver ativo
+
+```bash
+# 1. Copie os novos arquivos de imagem para public/selos/
+#    (mesma pasta de sempre)
+
+# 2. Gere/atualize a galeria estática em /docs
+node scripts/generate-docs-gallery.js
+
+# 3. Suba as mudanças
+git add docs public/selos
+git commit -m "chore: atualiza galeria estática temporária"
+git push
+```
+
+O GitHub Pages faz redeploy automático a partir da pasta `/docs` da branch `main` a cada push —
+não é necessária nenhuma ação extra (nenhum GitHub Actions, nenhum build). Em alguns minutos o link
+público já reflete as novas imagens.
+
+> `node scripts/generate-docs-gallery.js` é idempotente: pode ser rodado quantas vezes forem
+> necessárias, sempre sobrescrevendo `docs/index.html` e `docs/selos/*` com o conteúdo atual de
+> `public/selos/`.
+
+### Quando o Vercel Blob voltar ao normal
+
+Nada precisa ser desfeito. O app em `src/` (Next.js + Vercel Blob) continua funcionando exatamente
+como antes — essa pasta `/docs` é aditiva e não interfere no build ou no deploy da Vercel. O painel
+admin completo (upload, aprovação, exclusão, reordenação) volta a funcionar automaticamente assim
+que a cota do Blob for renovada.
+
 ## 📁 Estrutura
 
 ```

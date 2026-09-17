@@ -33,12 +33,40 @@ Em andamento. Ver checklist abaixo.
 ## Plano
 
 ### Fase 1 — Upgrade de framework (sequencial, feito antes do resto)
-- [ ] Next.js 15.5 → 16, React 19.0 → 19.2, Tailwind 3 → 4
-- [ ] `next.config.ts`, `postcss.config.mjs`, `tailwind.config.ts` (ou
+- [x] Next.js 15.5 → 16, React 19.0 → 19.2, Tailwind 3 → 4
+- [x] `next.config.ts`, `postcss.config.mjs`, `tailwind.config.ts` (ou
   remoção, se o Tailwind 4 não usar mais arquivo de config) atualizados
-- [ ] Build, lint e typecheck passando sem erros
-- [ ] Nenhuma mudança de comportamento/lógica de negócio nesta fase — só
+- [x] Build, lint e typecheck passando sem erros
+- [x] Nenhuma mudança de comportamento/lógica de negócio nesta fase — só
   framework
+
+  Concluído em 2026-09-17. Detalhes/decisões: `next` 16.3.5, `react`/
+  `react-dom` 19.2.8, `tailwindcss` 4.3.3 (mesmas versões do Greenfield).
+  `tailwind.config.ts` removido; cores da marca migradas para `@theme` em
+  `globals.css`. `next lint` (removido no Next 16) trocado por `eslint`
+  direto com `eslint.config.mjs` (flat config, igual ao Greenfield).
+  Ajustes exigidos pelo upgrade: `revalidateTag()` agora exige um segundo
+  argumento — usado `{ expire: 0 }` nas 4 chamadas existentes para manter
+  o comportamento anterior (invalidação imediata); `next build` trocou
+  `tsconfig.json` `jsx` de `preserve` para `react-jsx` automaticamente;
+  `scripts/generate-manifest.js` e `scripts/generate-docs-gallery.js`
+  convertidos para `.mjs` (ESM) por causa da regra
+  `@typescript-eslint/no-require-imports`; `<a href="/...">` internos
+  trocados por `<Link>` do `next/link` em `admin/page.tsx` e
+  `EditorClient.tsx` (regra `@next/next/no-html-link-for-pages`). Build e
+  typecheck limpos. Lint tem 4 erros remanescentes, não triviais,
+  causados por regras novas do React Compiler/`eslint-plugin-react-hooks`
+  v6 (bundladas no `eslint-config-next` 16) que já existiam no código
+  antes do upgrade mas nunca tinham sido lintadas (não havia
+  `eslint.config`/`.eslintrc` no projeto): `react-hooks/set-state-in-effect`
+  em `src/app/admin/page.tsx:47` e `src/components/ViewerGate.tsx:38`
+  (setState direto dentro de `useEffect`), e
+  `react-hooks/immutability`/`preserve-manual-memoization` em
+  `src/app/admin/page.tsx:48,54` (`fetchImages` usado antes de ser
+  declarado dentro do próprio `useEffect` de restauração de sessão).
+  Corrigir exige reordenar/reestruturar esses componentes, o que é
+  mudança de lógica de UI fora do escopo desta fase — ficou documentado
+  aqui para tratamento em separado, sem regra silenciada/ignorada.
 
 ### Fase 2 — Fundação Supabase compartilhada (feita por mim, não pelos agentes,
 para as duas frentes abaixo partirem do mesmo ponto sem conflito)

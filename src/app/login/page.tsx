@@ -1,4 +1,26 @@
 import { login } from './actions';
+import { createClient } from '@/lib/supabase/server';
+import { SELOS_BUCKET } from '@/lib/storage/selos';
+
+async function getRandomSeloBackground(): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('selos').select('storage_path');
+
+    if (error || !data || data.length === 0) {
+      return null;
+    }
+
+    const random = data[Math.floor(Math.random() * data.length)];
+    const { data: publicUrl } = supabase.storage
+      .from(SELOS_BUCKET)
+      .getPublicUrl(random.storage_path);
+
+    return publicUrl.publicUrl;
+  } catch {
+    return null;
+  }
+}
 
 export default async function LoginPage({
   searchParams,
@@ -7,7 +29,7 @@ export default async function LoginPage({
 }) {
   const { message } = await searchParams;
 
-  const bgImage = `/selos/${encodeURIComponent('COPA DO NORDESTE – SPORT X FORTALEZA.png')}`;
+  const bgImage = await getRandomSeloBackground();
 
   return (
     <div className="min-h-screen flex bg-brand-dark">
@@ -112,9 +134,12 @@ export default async function LoginPage({
 
       {/* Coluna visual */}
       <div
-        className="hidden md:block relative flex-1 bg-cover bg-center"
-        style={{ backgroundImage: `url('${bgImage}')` }}
+        className="hidden md:block relative flex-1 bg-cover bg-center bg-brand-dark"
+        style={bgImage ? { backgroundImage: `url('${bgImage}')` } : undefined}
       >
+        {!bgImage && (
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,var(--color-brand-red),var(--color-brand-orange),var(--color-brand-yellow))] opacity-30" />
+        )}
         <div className="absolute inset-0 bg-black/60" />
         <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.15)_45%,transparent_70%)]" />
         <div className="absolute bottom-10 left-10 right-10">

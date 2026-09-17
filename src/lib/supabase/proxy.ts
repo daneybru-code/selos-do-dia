@@ -9,7 +9,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 // `/i` (link curto de convite, ver src/app/i/[code]/route.ts) pelo mesmo
 // motivo: redireciona pro /auth/confirm acima, então também é clicado por
 // quem ainda não tem sessão.
-const PUBLIC_PATHS = ['/login', '/auth/confirm', '/i'];
+// `/recuperar-senha` também é pública: é a tela de "esqueci minha senha",
+// usada justamente por quem não consegue entrar.
+const PUBLIC_PATHS = ['/login', '/auth/confirm', '/i', '/recuperar-senha'];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

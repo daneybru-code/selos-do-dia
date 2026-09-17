@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { login } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { SELOS_BUCKET } from '@/lib/storage/selos';
@@ -126,14 +127,14 @@ export default async function LoginPage({
               Entrar
             </button>
 
-            <details className="text-center mt-1">
-              <summary className="text-gray-500 text-xs cursor-pointer list-none hover:text-gray-300 transition-colors">
+            <p className="text-center mt-1">
+              <Link
+                href="/recuperar-senha"
+                className="text-gray-500 text-xs cursor-pointer hover:text-gray-300 transition-colors"
+              >
                 Esqueci minha senha
-              </summary>
-              <p className="text-gray-600 text-xs mt-2">
-                Fale com o administrador para redefinir sua senha.
-              </p>
-            </details>
+              </Link>
+            </p>
           </form>
         </div>
 

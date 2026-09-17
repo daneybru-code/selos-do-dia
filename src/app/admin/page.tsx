@@ -263,7 +263,7 @@ export default function AdminPage() {
 
         {/* ── Zona de upload ── */}
         <section>
-          <h2 className="text-white font-bold text-lg mb-4">Adicionar selos</h2>
+          <h2 className="font-heading italic uppercase text-white font-bold text-lg mb-4">Adicionar selos</h2>
 
           <div
             className="rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all"
@@ -322,9 +322,14 @@ export default function AdminPage() {
 
           {/* Cabeçalho da seção */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <h2 className="text-white font-bold text-lg">
+            <h2 className="font-heading italic uppercase text-white font-bold text-lg">
               Selos publicados{' '}
-              <span className="text-gray-500 font-normal text-sm">({images.length})</span>
+              <span
+                className="normal-case not-italic text-gray-500 font-normal text-sm"
+                style={{ fontFamily: 'Arial, "Helvetica Neue", Helvetica, system-ui, sans-serif' }}
+              >
+                ({images.length})
+              </span>
             </h2>
 
             <div className="flex items-center gap-3">

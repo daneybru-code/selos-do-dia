@@ -62,7 +62,7 @@ export default function ViewerGate({ message }: { message?: string }) {
             style={{ filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.5))' }}
           />
           <h1
-            className="text-white text-3xl sm:text-4xl font-black uppercase tracking-widest"
+            className="font-heading italic text-white text-3xl sm:text-4xl font-black uppercase tracking-widest"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}
           >
             Selos do Dia

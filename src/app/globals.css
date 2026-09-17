@@ -7,6 +7,12 @@
   --color-brand-gold: #f5c518;
   --color-brand-dark: #0d0d0d;
   --color-brand-card: #1a1a1a;
+
+  /* Namespace --font-* do Tailwind 4: gera automaticamente a utilitária
+     `font-heading`, que aponta pra variável CSS exposta pelo next/font em
+     src/app/layout.tsx (Barlow Condensed). Usar só em títulos, combinada
+     com `italic uppercase` do próprio Tailwind. */
+  --font-heading: var(--font-barlow-condensed), 'Arial Narrow', sans-serif;
 }
 
 /* Tailwind 4 já inclui um reset (Preflight) dentro de `@layer base`, que

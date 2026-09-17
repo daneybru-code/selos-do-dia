@@ -17,7 +17,7 @@ export default async function LoginPage({
         <img src="/logo.png" alt="Globo Esporte" className="h-8 w-fit object-contain" />
 
         <div className="w-full max-w-sm mx-auto">
-          <h1 className="text-white text-2xl font-black uppercase tracking-widest mb-1">
+          <h1 className="font-heading italic text-white text-2xl font-black uppercase tracking-widest mb-1">
             Entrar
           </h1>
           <p className="text-gray-400 text-sm mb-8">

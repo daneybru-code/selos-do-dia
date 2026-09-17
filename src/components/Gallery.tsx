@@ -160,7 +160,7 @@ export default function Gallery({ images }: GalleryProps) {
                 </div>
 
                 {/* Label */}
-                <p className="mt-2 text-sm font-semibold text-center px-1 truncate"
+                <p className="font-heading italic uppercase mt-2 text-sm font-bold text-center px-1 truncate"
                   style={{ color: ann.approved ? '#4ade80' : ann.rejected ? '#f87171' : '#FFD700' }}
                   title={image.name}
                 >

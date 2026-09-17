@@ -4,7 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Rotas públicas: não exigem sessão autenticada. Tudo mais (galeria, admin,
 // rotas de API de upload/exclusão/reordenação etc) exige login — o app é de
 // uso interno, não existe mais "senha de visualizador" separada.
-const PUBLIC_PATHS = ['/login'];
+// `/auth/confirm` também precisa ser pública: é o link de convite/redefinição
+// de senha do Supabase Auth, clicado por quem ainda não tem sessão nenhuma.
+const PUBLIC_PATHS = ['/login', '/auth/confirm'];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

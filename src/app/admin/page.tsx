@@ -252,6 +252,9 @@ export default function AdminPage() {
                 Editor de Arte
               </Link>
             )}
+            <Link href="/admin/membros" className="text-white/80 hover:text-white text-sm transition-colors">
+              Membros
+            </Link>
             <Link href="/" className="text-white/80 hover:text-white text-sm transition-colors">
               ← Ver galeria
             </Link>

@@ -9,10 +9,16 @@
   --color-brand-card: #1a1a1a;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Tailwind 4 já inclui um reset (Preflight) dentro de `@layer base`, que
+   respeita Cascade Layers corretamente. Um reset manual fora de layer (como
+   `* { margin: 0 }` sem `@layer`) tem prioridade sobre QUALQUER classe do
+   Tailwind (inclusive `mx-auto`), independente de especificidade — foi isso
+   que quebrava a centralização em toda a página depois do upgrade pro
+   Tailwind 4. Mantemos só o box-sizing, já dentro de `@layer base`. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 }
 
 html,

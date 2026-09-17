@@ -1,9 +1,15 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
-// Fundação compartilhada: só atualiza a sessão a cada request. A lógica de
-// proteção de rota (redirecionar não-autenticados, checar papel admin/viewer)
-// é adicionada pela frente de autenticação em cima desta função.
+// Rotas públicas: não exigem sessão autenticada. Tudo mais (galeria, admin,
+// rotas de API de upload/exclusão/reordenação etc) exige login — o app é de
+// uso interno, não existe mais "senha de visualizador" separada.
+const PUBLIC_PATHS = ['/login'];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -30,7 +36,48 @@ export async function updateSession(request: NextRequest) {
 
   // Atualiza o token de auth; precisa rodar antes de qualquer Server
   // Component ler a sessão.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // Sem sessão: só /login (e assets estáticos, já filtrados pelo matcher)
+  // são acessíveis. Qualquer outra rota redireciona pro login.
+  if (!user) {
+    if (isPublicPath(pathname)) {
+      return supabaseResponse;
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  // Autenticado tentando acessar /login: manda pra galeria.
+  if (isPublicPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  // /admin exige role 'admin' em public.profiles. A policy de RLS permite
+  // que o usuário leia só o próprio perfil (auth.uid() = id), suficiente
+  // aqui.
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      url.search = new URLSearchParams({ message: 'Acesso restrito a administradores' }).toString();
+      return NextResponse.redirect(url);
+    }
+  }
 
   return supabaseResponse;
 }

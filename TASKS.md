@@ -77,18 +77,22 @@ para as duas frentes abaixo partirem do mesmo ponto sem conflito)
 - [ ] `@supabase/ssr` + `@supabase/supabase-js` adicionados ao `package.json`
 
 ### Fase 3a — Autenticação (paralelo, em worktree próprio)
-- [ ] Migration `profiles` (id, role: admin|viewer) com RLS, trigger a partir
-  de `auth.users` (padrão do Greenfield)
-- [ ] Páginas `/login` (e `/signup` se fizer sentido para criar o primeiro
-  admin) adaptadas do Greenfield
-- [ ] `src/proxy.ts` protege `/admin` (só role admin) e a galeria pública
+- [x] Migration `profiles` (id, role: admin|viewer) com RLS, trigger a partir
+  de `auth.users` (padrão do Greenfield) — aplicada via `supabase db push`;
+  primeiro admin (`daneybru@gmail.com`) criado manualmente via service role
+- [x] Página `/login` adaptada do Greenfield (sem `/signup` — app interno,
+  novos usuários/admins são criados manualmente via service role, não há
+  cadastro público)
+- [x] `src/proxy.ts` protege `/admin` (só role admin) e a galeria pública
   (só usuário autenticado, qualquer papel) — substitui `ViewerGate.tsx` e o
   cookie de senha de visualização
-- [ ] `api/auth` e `api/viewer-auth` removidos (substituídos pelo fluxo
-  Supabase Auth) ou adaptados
+- [x] `api/auth` e `api/viewer-auth` removidos (substituídos pelo fluxo
+  Supabase Auth)
 - [ ] `x-admin-password` header removido de `upload`/`delete`/`reorder`;
-  checagem de role admin via sessão Supabase no servidor
-- [ ] `.env.example` criado/atualizado documentando as chaves Supabase
+  checagem de role admin via sessão Supabase no servidor — depende da frente
+  de storage (arquivos fora do escopo desta worktree); helper pronto em
+  `src/lib/auth/requireAdmin.ts` para ser chamado dentro dessas rotas
+- [x] `.env.example` criado/atualizado documentando as chaves Supabase
 
 ### Fase 3b — Storage e dados (paralelo, em worktree próprio)
 - [ ] Migration `selos` (filename, name, storage_path, uploaded_at, position,

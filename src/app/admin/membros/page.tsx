@@ -19,6 +19,8 @@ export default function MembrosPage() {
   const [inviteRole, setInviteRole]   = useState<Role>('viewer');
   const [inviting, setInviting]       = useState(false);
   const [inviteMsg, setInviteMsg]     = useState<{ text: string; ok: boolean } | null>(null);
+  const [inviteLink, setInviteLink]   = useState<string | null>(null);
+  const [linkCopied, setLinkCopied]   = useState(false);
   const [busyId, setBusyId]           = useState<string | null>(null);
 
   /* ── Lista membros. Estrutura pensada para não disparar setState síncrono
@@ -44,6 +46,8 @@ export default function MembrosPage() {
     e.preventDefault();
     setInviting(true);
     setInviteMsg(null);
+    setInviteLink(null);
+    setLinkCopied(false);
 
     try {
       const res = await fetch('/api/members', {
@@ -58,12 +62,26 @@ export default function MembrosPage() {
         return;
       }
 
-      setInviteMsg({ text: `Convite enviado para ${inviteEmail.trim()}`, ok: true });
+      setInviteMsg({ text: 'Convite criado. Copie o link abaixo e envie para a pessoa (o sistema não manda e-mail automaticamente ainda).', ok: true });
+      setInviteLink(data.inviteLink ?? null);
       setInviteEmail('');
       setInviteRole('viewer');
       fetchMembers();
     } finally {
       setInviting(false);
+    }
+  };
+
+  /* ── Copiar link de convite ── */
+  const handleCopyLink = async () => {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Ambiente sem clipboard API (ex.: http não-seguro) — sem tratamento
+      // especial, o admin pode selecionar e copiar manualmente o texto.
     }
   };
 
@@ -164,6 +182,24 @@ export default function MembrosPage() {
             >
               {inviteMsg.text}
             </p>
+          )}
+
+          {inviteLink && (
+            <div
+              className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 rounded-xl p-3"
+              style={{ backgroundColor: '#1A1A1A' }}
+            >
+              <code className="flex-1 min-w-0 truncate text-xs text-gray-300 px-2 py-1.5 rounded-lg bg-[#2a2a2a]">
+                {inviteLink}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="px-4 py-1.5 rounded-lg font-bold text-white text-xs uppercase tracking-wider transition-all hover:opacity-90 active:scale-95 shrink-0 bg-[linear-gradient(135deg,var(--color-brand-red),var(--color-brand-orange),var(--color-brand-yellow))]"
+              >
+                {linkCopied ? 'Copiado!' : 'Copiar link'}
+              </button>
+            </div>
           )}
         </section>
 

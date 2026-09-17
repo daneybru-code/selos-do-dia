@@ -49,28 +49,27 @@ export async function POST(request: NextRequest) {
   const origin = new URL(request.url).origin;
   const adminClient = createAdminClient();
 
-  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${origin}/auth/confirm?next=/definir-senha`,
+  // `generateLink` cria o usuário (mesmo trigger `handle_new_user` populando
+  // `profiles`) e devolve um link pronto em `data.properties.action_link` —
+  // sem depender de SMTP/envio de e-mail. O admin copia o link e manda pra
+  // pessoa manualmente (WhatsApp, Slack etc.). Ver teste manual documentado
+  // no commit: convidar o mesmo e-mail de novo (ainda não confirmado) gera
+  // um novo link válido para o mesmo usuário, em vez de dar erro.
+  const { data, error } = await adminClient.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo: `${origin}/auth/confirm?next=/definir-senha` },
   });
 
   if (error) {
     if (error.code === 'email_exists' || error.code === 'user_already_exists') {
       return NextResponse.json({ error: 'Este e-mail já tem uma conta' }, { status: 409 });
     }
-    // Limite de envio de e-mail do Supabase (baixo por padrão no plano
-    // gratuito) — confirmado durante teste manual desta rota: convidar o
-    // mesmo endereço duas vezes em poucos segundos já é suficiente para
-    // disparar esse erro antes mesmo da checagem de "já existe".
-    if (error.code === 'over_email_send_rate_limit') {
-      return NextResponse.json(
-        { error: 'Muitos convites enviados em pouco tempo. Aguarde alguns minutos e tente de novo.' },
-        { status: 429 },
-      );
-    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   const userId = data.user.id;
+  const inviteLink = data.properties.action_link;
 
   // O trigger `handle_new_user` já criou a linha em `profiles` com
   // role = 'viewer' por padrão — só precisa promover se o convite pedido
@@ -86,5 +85,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, userId });
+  return NextResponse.json({ ok: true, userId, inviteLink });
 }

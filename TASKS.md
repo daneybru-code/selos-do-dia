@@ -171,15 +171,57 @@ para as duas frentes abaixo partirem do mesmo ponto sem conflito)
     deixado no código em vez de silenciar a regra.
 
 ### Fase 4 — Integração final (sequencial, feita por mim)
-- [ ] Merge das duas branches/worktrees na `feat/supabase-migration`,
-  resolvendo conflitos (esperado: mínimos, arquivos praticamente disjuntos)
-- [ ] Build + lint + typecheck da árvore final
-- [ ] Teste manual local (`npm run dev`): login, upload, aprovar/rejeitar,
-  reordenar, exclusão, galeria pública
+- [x] Merge das duas branches (`feat/supabase-auth`, depois
+  `feat/supabase-storage`) na `feat/supabase-migration`. Único conflito real:
+  `src/lib/auth/requireAdmin.ts` (add/add — a frente de storage criou um stub
+  temporário porque o arquivo real ainda não existia na hora dela começar);
+  resolvido mantendo a implementação real da frente de Auth. O arquivo
+  placeholder de migration (`20260917142311_remote_placeholder_auth.sql`,
+  criado pela frente de storage só pra destravar `supabase db push` local)
+  foi removido no merge — a migration real (`create_profiles.sql`) já veio
+  junto da branch de auth.
+- [x] Build + lint + typecheck da árvore final — build e typecheck limpos.
+  Lint: restam os mesmos 2 erros não-triviais já documentados na Fase 1/3
+  (`react-hooks/set-state-in-effect` em `admin/page.tsx` e `ViewerGate.tsx`,
+  padrão idiomático de fetch-on-mount, regra experimental do React Compiler).
+- [x] Teste manual (parcial): login via Supabase Auth confirmado
+  programaticamente (email/senha do admin válidos, `profiles.role = 'admin'`
+  correto); tabela `selos` confirmada com as 5 linhas migradas; proxy
+  confirmado redirecionando `/`, `/admin` e `/api/images` pra `/login` quando
+  não autenticado. **Não foi possível testar o fluxo de login pelo navegador
+  de verdade** neste ambiente — mesma limitação já registrada no `TASKS.md`
+  do Greenfield (Claude in Chrome não alcança `localhost` desta máquina).
+  Recomendo ao usuário testar manualmente em `npm run dev` antes de confiar
+  100% no fluxo de UI.
 - [ ] Variáveis de ambiente novas adicionadas no projeto Vercel (Production)
-- [ ] Merge para `main` e push (deploy automático via integração Git já
-  configurada)
-- [ ] `TASKS.md` atualizado com o resultado final
+  — pendente, depende do usuário decidir quando fazer o deploy
+- [ ] Merge para `main` e push — **pendente, aguardando confirmação do
+  usuário**: esta migração troca a autenticação (senha única → login por
+  conta Supabase), o que muda como as pessoas acessam o site em produção.
+  Não fazer merge/push sem o usuário estar ciente disso e sem as env vars já
+  configuradas na Vercel (o deploy quebraria a galeria/admin em produção sem
+  elas).
+- [x] `TASKS.md` atualizado com o resultado final
+
+## Segurança — limitação conhecida (não bloqueante, documentar e decidir depois)
+
+As policies de RLS de escrita em `public.selos` e `storage.objects` liberam
+qualquer usuário autenticado (`to authenticated`), não só admins — a
+restrição fina "só admin" pra upload/exclusão/reordenação é feita em código
+(`requireAdmin()` nas rotas de API), não no banco. Na prática, um usuário
+"viewer" mal-intencionado que soubesse usar a API REST do Supabase
+diretamente (com a `anon key`, que é pública) poderia contornar essa checagem
+de app e escrever na tabela/bucket direto. Isso é aceitável para um app
+interno de poucos usuários confiáveis, mas se o número de contas "viewer"
+crescer, vale endurecer as policies de `insert`/`update`/`delete` em `selos`
+e `storage.objects` para checar
+`exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')`
+em vez de só `to authenticated` — como já fica anotado na própria migration
+`20260917142410_create_selos.sql`. Isso quebraria a rota `annotations`
+(que precisa que QUALQUER autenticado escreva `approved`/`rejected`/`note`),
+então essa melhoria exigiria também separar a policy de update por coluna
+(ex. via trigger) ou mover annotations pra uma tabela própria com policy
+mais aberta. Não implementado agora por ser fora do escopo pedido.
 
 ## Notas para quem retomar este trabalho
 

@@ -80,7 +80,7 @@ visualização pública enquanto o Vercel Blob está bloqueado.
 #    (mesma pasta de sempre)
 
 # 2. Gere/atualize a galeria estática em /docs
-node scripts/generate-docs-gallery.js
+node scripts/generate-docs-gallery.mjs
 
 # 3. Suba as mudanças
 git add docs public/selos
@@ -92,7 +92,7 @@ O GitHub Pages faz redeploy automático a partir da pasta `/docs` da branch `mai
 não é necessária nenhuma ação extra (nenhum GitHub Actions, nenhum build). Em alguns minutos o link
 público já reflete as novas imagens.
 
-> `node scripts/generate-docs-gallery.js` é idempotente: pode ser rodado quantas vezes forem
+> `node scripts/generate-docs-gallery.mjs` é idempotente: pode ser rodado quantas vezes forem
 > necessárias, sempre sobrescrevendo `docs/index.html` e `docs/selos/*` com o conteúdo atual de
 > `public/selos/`.
 

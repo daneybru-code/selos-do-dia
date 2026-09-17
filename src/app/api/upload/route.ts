@@ -1,14 +1,14 @@
-import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
-import { readImageIndex, writeImageIndex } from '@/lib/blobIndex';
+import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { SELOS_BUCKET, toStoragePath } from '@/lib/storage/selos';
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  const password = request.headers.get('x-admin-password');
-  if (!password || password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    return admin.response ?? NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
   const formData = await request.formData();
@@ -25,31 +25,74 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nenhuma imagem válida' }, { status: 400 });
   }
 
-  const uploaded = await Promise.all(
-    validFiles.map((file) =>
-      put(`selos/${file.name}`, file, {
-        access: 'public',
-        addRandomSuffix: false,
-      })
-    )
-  );
+  const supabase = await createClient();
 
-  const currentIndex = await readImageIndex();
-  const newEntries = uploaded.map((b) => ({
-    filename: b.pathname.replace('selos/', ''),
-    name: b.pathname.replace('selos/', '').replace(/\.[^.]+$/, ''),
-    src: b.url,
-    uploadedAt: new Date().toISOString(),
-  }));
-  const mergedIndex = [
-    ...currentIndex.filter((img) => !newEntries.some((n) => n.src === img.src)),
-    ...newEntries,
-  ];
-  await writeImageIndex(mergedIndex);
+  // Próxima posição livre = maior posição atual + 1 (novos selos vão pro
+  // final da ordem; nulls (nunca reordenados manualmente) não contam).
+  const { data: maxRow } = await supabase
+    .from('selos')
+    .select('position')
+    .order('position', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  let nextPosition = (maxRow?.position ?? -1) + 1;
 
-  revalidateTag('selos-images');
+  const uploaded: { url: string; pathname: string }[] = [];
+  const errors: string[] = [];
 
-  return NextResponse.json({
-    uploaded: uploaded.map((b) => ({ url: b.url, pathname: b.pathname })),
-  });
+  for (const file of validFiles) {
+    const storagePath = toStoragePath(file.name);
+    const arrayBuffer = await file.arrayBuffer();
+
+    const { error: uploadError } = await supabase.storage
+      .from(SELOS_BUCKET)
+      .upload(storagePath, arrayBuffer, { contentType: file.type, upsert: true });
+
+    if (uploadError) {
+      errors.push(`${file.name}: ${uploadError.message}`);
+      continue;
+    }
+
+    const name = file.name.replace(/\.[^.]+$/, '');
+
+    // Reenviar um arquivo com o mesmo nome (mesma storage_path sanitizada)
+    // substitui a linha existente em vez de duplicar — mesmo comportamento
+    // de "allowOverwrite" que existia com o Vercel Blob.
+    const { data: existing } = await supabase
+      .from('selos')
+      .select('id')
+      .eq('storage_path', storagePath)
+      .maybeSingle();
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from('selos')
+        .update({ filename: file.name, name, uploaded_at: new Date().toISOString() })
+        .eq('id', existing.id);
+      if (updateError) {
+        errors.push(`${file.name}: ${updateError.message}`);
+        continue;
+      }
+    } else {
+      const { error: insertError } = await supabase.from('selos').insert({
+        filename: file.name,
+        name,
+        storage_path: storagePath,
+        position: nextPosition++,
+      });
+      if (insertError) {
+        errors.push(`${file.name}: ${insertError.message}`);
+        continue;
+      }
+    }
+
+    const { data: publicUrl } = supabase.storage.from(SELOS_BUCKET).getPublicUrl(storagePath);
+    uploaded.push({ url: publicUrl.publicUrl, pathname: storagePath });
+  }
+
+  if (!uploaded.length) {
+    return NextResponse.json({ error: errors.join('; ') || 'Falha no envio' }, { status: 500 });
+  }
+
+  return NextResponse.json({ uploaded, ...(errors.length ? { errors } : {}) });
 }

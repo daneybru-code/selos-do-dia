@@ -4,7 +4,7 @@
  * do Vercel Blob (plano Hobby) estiver esgotada no ciclo atual.
  *
  * O que faz:
- *   1. Lê public/selos/manifest.json (gerado por scripts/generate-manifest.js)
+ *   1. Lê public/selos/manifest.json (gerado por scripts/generate-manifest.mjs)
  *   2. Copia todas as imagens de public/selos/ para docs/selos/
  *   3. Copia public/logo.png para docs/logo.png (se existir)
  *   4. Gera docs/index.html — galeria estática, sem build, sem dependências externas
@@ -14,14 +14,14 @@
  * a galeria estática depois de adicionar novas imagens em public/selos/.
  *
  * Uso:
- *   node scripts/generate-manifest.js        # garante que o manifest está atualizado
- *   node scripts/generate-docs-gallery.js    # gera/atualiza /docs
+ *   node scripts/generate-manifest.mjs        # garante que o manifest está atualizado
+ *   node scripts/generate-docs-gallery.mjs    # gera/atualiza /docs
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(import.meta.dirname, '..');
 const selosDir = path.join(ROOT, 'public', 'selos');
 const manifestPath = path.join(selosDir, 'manifest.json');
 const logoSrc = path.join(ROOT, 'public', 'logo.png');
@@ -43,7 +43,7 @@ function escapeHtml(str) {
 
 function main() {
   if (!fs.existsSync(manifestPath)) {
-    console.error('❌ public/selos/manifest.json não encontrado. Rode "node scripts/generate-manifest.js" primeiro.');
+    console.error('❌ public/selos/manifest.json não encontrado. Rode "node scripts/generate-manifest.mjs" primeiro.');
     process.exit(1);
   }
 

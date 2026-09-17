@@ -66,7 +66,7 @@ export default function Lightbox({
         <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
           {currentIndex + 1} / {images.length}
         </span>
-        <span className="text-sm font-bold truncate max-w-[40%] sm:max-w-md text-center" style={{ color: '#FFD700' }}>
+        <span className="font-heading italic uppercase text-sm font-bold truncate max-w-[40%] sm:max-w-md text-center" style={{ color: '#FFD700' }}>
           {current.name}
         </span>
         <button

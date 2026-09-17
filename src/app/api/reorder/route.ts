@@ -1,11 +1,15 @@
-import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
+// Contrato mudou de { order: string[] } com URLs públicas (Vercel Blob) para
+// { order: string[] } com `filename` — identificador estável já usado pelo
+// admin/galeria para anotações. Cada posição na array vira a coluna
+// `position` da linha correspondente (substitui o antigo blob _order.json).
 export async function POST(request: NextRequest) {
-  const password = request.headers.get('x-admin-password');
-  if (!password || password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    return admin.response ?? NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
   const { order } = await request.json();
@@ -13,13 +17,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'order deve ser um array' }, { status: 400 });
   }
 
-  await put('selos/_order.json', JSON.stringify(order), {
-    access: 'public',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: 'application/json',
-  });
+  const supabase = await createClient();
 
-  revalidateTag('selos-images');
+  const results = await Promise.all(
+    order.map((filename: string, index: number) =>
+      supabase.from('selos').update({ position: index }).eq('filename', filename)
+    )
+  );
+
+  const failed = results.find((r) => r.error);
+  if (failed?.error) {
+    return NextResponse.json({ error: failed.error.message }, { status: 500 });
+  }
+
   return NextResponse.json({ success: true });
 }

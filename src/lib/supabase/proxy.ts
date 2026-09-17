@@ -6,7 +6,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 // uso interno, não existe mais "senha de visualizador" separada.
 // `/auth/confirm` também precisa ser pública: é o link de convite/redefinição
 // de senha do Supabase Auth, clicado por quem ainda não tem sessão nenhuma.
-const PUBLIC_PATHS = ['/login', '/auth/confirm'];
+// `/i` (link curto de convite, ver src/app/i/[code]/route.ts) pelo mesmo
+// motivo: redireciona pro /auth/confirm acima, então também é clicado por
+// quem ainda não tem sessão.
+const PUBLIC_PATHS = ['/login', '/auth/confirm', '/i'];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

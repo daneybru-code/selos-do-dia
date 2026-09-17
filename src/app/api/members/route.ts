@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -69,7 +70,35 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = data.user.id;
-  const inviteLink = data.properties.action_link;
+  const actionLink = data.properties.action_link;
+
+  // Encurta o link do Supabase (gigante, com token na query string) num
+  // código curto próprio, resolvido pela rota pública GET /i/[code]. Chance
+  // de colisão é baixíssima pro volume de uso daqui (poucos convites), mas
+  // confere e tenta de novo antes de desistir.
+  let shortCode: string | null = null;
+  for (let attempt = 0; attempt < 5 && !shortCode; attempt++) {
+    const candidate = randomUUID().replace(/-/g, '').slice(0, 8);
+    const { data: existing } = await adminClient
+      .from('invite_short_links')
+      .select('code')
+      .eq('code', candidate)
+      .maybeSingle();
+    if (!existing) shortCode = candidate;
+  }
+
+  let inviteLink = actionLink;
+  if (shortCode) {
+    const { error: shortLinkError } = await adminClient
+      .from('invite_short_links')
+      .insert({ code: shortCode, target_url: actionLink });
+
+    if (!shortLinkError) {
+      inviteLink = `${origin}/i/${shortCode}`;
+    }
+    // Se der erro ao salvar o link curto, cai de volta pro link longo do
+    // Supabase — não vale falhar o convite inteiro por causa disso.
+  }
 
   // O trigger `handle_new_user` já criou a linha em `profiles` com
   // role = 'viewer' por padrão — só precisa promover se o convite pedido

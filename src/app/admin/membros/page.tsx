@@ -20,6 +20,7 @@ export default function MembrosPage() {
   const [inviting, setInviting]       = useState(false);
   const [inviteMsg, setInviteMsg]     = useState<{ text: string; ok: boolean } | null>(null);
   const [inviteLink, setInviteLink]   = useState<string | null>(null);
+  const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
   const [linkCopied, setLinkCopied]   = useState(false);
   const [busyId, setBusyId]           = useState<string | null>(null);
 
@@ -47,13 +48,16 @@ export default function MembrosPage() {
     setInviting(true);
     setInviteMsg(null);
     setInviteLink(null);
+    setInvitedEmail(null);
     setLinkCopied(false);
+
+    const emailToInvite = inviteEmail.trim();
 
     try {
       const res = await fetch('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+        body: JSON.stringify({ email: emailToInvite, role: inviteRole }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -64,6 +68,7 @@ export default function MembrosPage() {
 
       setInviteMsg({ text: 'Convite criado. Copie o link abaixo e envie para a pessoa (o sistema não manda e-mail automaticamente ainda).', ok: true });
       setInviteLink(data.inviteLink ?? null);
+      setInvitedEmail(emailToInvite || null);
       setInviteEmail('');
       setInviteRole('viewer');
       fetchMembers();
@@ -186,19 +191,43 @@ export default function MembrosPage() {
 
           {inviteLink && (
             <div
-              className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 rounded-xl p-3"
+              className="mt-3 flex flex-col gap-2 rounded-xl p-3"
               style={{ backgroundColor: '#1A1A1A' }}
             >
-              <code className="flex-1 min-w-0 truncate text-xs text-gray-300 px-2 py-1.5 rounded-lg bg-[#2a2a2a]">
-                {inviteLink}
-              </code>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-4 py-1.5 rounded-lg font-bold text-white text-xs uppercase tracking-wider transition-all hover:opacity-90 active:scale-95 shrink-0 bg-[linear-gradient(135deg,var(--color-brand-red),var(--color-brand-orange),var(--color-brand-yellow))]"
-              >
-                {linkCopied ? 'Copiado!' : 'Copiar link'}
-              </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <code className="flex-1 min-w-0 truncate text-xs text-gray-300 px-2 py-1.5 rounded-lg bg-[#2a2a2a]">
+                  {inviteLink}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="px-4 py-1.5 rounded-lg font-bold text-white text-xs uppercase tracking-wider transition-all hover:opacity-90 active:scale-95 shrink-0 bg-[linear-gradient(135deg,var(--color-brand-red),var(--color-brand-orange),var(--color-brand-yellow))]"
+                >
+                  {linkCopied ? 'Copiado!' : 'Copiar link'}
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    'Você foi convidado para o Selos do Dia — Globo Esporte. Acesse o link para definir sua senha: ' + inviteLink,
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-center px-4 py-1.5 rounded-lg font-bold text-white text-xs uppercase tracking-wider transition-all hover:opacity-90 active:scale-95"
+                  style={{ backgroundColor: '#25D366' }}
+                >
+                  Enviar por WhatsApp
+                </a>
+                <a
+                  href={`mailto:${invitedEmail ?? ''}?subject=${encodeURIComponent('Convite — Selos do Dia')}&body=${encodeURIComponent(
+                    'Você foi convidado para o Selos do Dia — Globo Esporte. Acesse o link para definir sua senha e entrar: ' + inviteLink,
+                  )}`}
+                  className="flex-1 text-center px-4 py-1.5 rounded-lg font-bold text-white text-xs uppercase tracking-wider transition-all hover:opacity-90 active:scale-95 bg-[linear-gradient(135deg,var(--color-brand-red),var(--color-brand-orange),var(--color-brand-yellow))]"
+                >
+                  Enviar por e-mail
+                </a>
+              </div>
             </div>
           )}
         </section>

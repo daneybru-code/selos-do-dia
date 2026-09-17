@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { list, put } from '@vercel/blob';
+import { head, put } from '@vercel/blob';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { Annotations } from '@/types';
 
@@ -19,20 +19,20 @@ async function writeAnnotations(data: Annotations): Promise<void> {
   revalidateTag('annotations');
 }
 
-// Cacheado por 30s e invalidado na hora após cada escrita: evita gastar
-// Blob Advanced Operations (list()) a cada carregamento da galeria/admin.
+// Cacheado e invalidado na hora após cada escrita: usa head() (Simple
+// Operation) em vez de list() (Advanced Operation) — não consome a cota de
+// 2.000 Advanced Operations/mês do Hobby a cada carregamento da galeria/admin.
 const readAnnotationsCached = unstable_cache(
   async (): Promise<Annotations> => {
     try {
-      const { blobs } = await list({ prefix: BLOB_PREFIX });
-      const blob = blobs.find((b) => b.pathname === `${BLOB_PREFIX}.json`);
-      if (!blob) return {};
-      const res = await fetch(blob.url, { cache: 'no-store' });
+      const info = await head(`${BLOB_PREFIX}.json`);
+      const res = await fetch(info.url, { cache: 'no-store' });
+      if (!res.ok) return {};
       return await res.json();
     } catch { return {}; }
   },
   ['annotations'],
-  { revalidate: 30, tags: ['annotations'] }
+  { revalidate: 300, tags: ['annotations'] }
 );
 
 async function readAnnotations(): Promise<Annotations> {

@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+import { readImageIndex, writeImageIndex } from '@/lib/blobIndex';
 
 export const maxDuration = 60;
 
@@ -32,6 +33,19 @@ export async function POST(request: NextRequest) {
       })
     )
   );
+
+  const currentIndex = await readImageIndex();
+  const newEntries = uploaded.map((b) => ({
+    filename: b.pathname.replace('selos/', ''),
+    name: b.pathname.replace('selos/', '').replace(/\.[^.]+$/, ''),
+    src: b.url,
+    uploadedAt: new Date().toISOString(),
+  }));
+  const mergedIndex = [
+    ...currentIndex.filter((img) => !newEntries.some((n) => n.src === img.src)),
+    ...newEntries,
+  ];
+  await writeImageIndex(mergedIndex);
 
   revalidateTag('selos-images');
 

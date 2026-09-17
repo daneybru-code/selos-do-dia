@@ -38,7 +38,7 @@ export default async function LoginPage({
       <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col justify-between px-8 py-10 sm:px-12">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Globo Esporte" className="h-14 w-fit object-contain" />
+          <img src="/logo.png" alt="Globo Esporte" className="h-24 w-fit object-contain" />
           {isAdminIntent && (
             <span className="bg-brand-red text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md">
               Admin

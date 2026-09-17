@@ -25,9 +25,10 @@ async function getRandomSeloBackground(): Promise<string | null> {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; intent?: string }>;
 }) {
-  const { message } = await searchParams;
+  const { message, intent } = await searchParams;
+  const isAdminIntent = intent === 'admin';
 
   const bgImage = await getRandomSeloBackground();
 
@@ -35,15 +36,24 @@ export default async function LoginPage({
     <div className="min-h-screen flex bg-brand-dark">
       {/* Coluna do formulário */}
       <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col justify-between px-8 py-10 sm:px-12">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Globo Esporte" className="h-8 w-fit object-contain" />
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Globo Esporte" className="h-14 w-fit object-contain" />
+          {isAdminIntent && (
+            <span className="bg-brand-red text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md">
+              Admin
+            </span>
+          )}
+        </div>
 
         <div className="w-full max-w-sm mx-auto">
           <h1 className="font-heading italic text-white text-2xl font-black uppercase tracking-widest mb-1">
-            Entrar
+            {isAdminIntent ? 'Painel administrativo' : 'Entrar'}
           </h1>
           <p className="text-gray-400 text-sm mb-8">
-            Acesse sua conta para gerenciar os selos do dia
+            {isAdminIntent
+              ? 'Entre com sua conta de administrador'
+              : 'Acesse sua conta para gerenciar os selos do dia'}
           </p>
 
           <form className="flex flex-col gap-4">
@@ -144,10 +154,12 @@ export default async function LoginPage({
         <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.15)_45%,transparent_70%)]" />
         <div className="absolute bottom-10 left-10 right-10">
           <p className="text-white text-2xl font-bold leading-snug max-w-md">
-            Selos do dia, sempre à mão.
+            {isAdminIntent ? 'Gerencie os selos do dia.' : 'Selos do dia, sempre à mão.'}
           </p>
           <p className="text-gray-300 text-sm mt-2 max-w-sm">
-            Acompanhe e organize os selos de cada partida do Globo Esporte em um só lugar.
+            {isAdminIntent
+              ? 'Publique, edite e organize os selos de cada partida do Globo Esporte.'
+              : 'Acompanhe e organize os selos de cada partida do Globo Esporte em um só lugar.'}
           </p>
         </div>
       </div>

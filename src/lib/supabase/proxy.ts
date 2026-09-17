@@ -50,6 +50,12 @@ export async function updateSession(request: NextRequest) {
     }
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    // Marca a intenção quando a origem era /admin, só pra diferenciação
+    // visual da tela de login — a checagem real de permissão continua
+    // sendo feita abaixo, depois do login, via profiles.role.
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+      url.searchParams.set('intent', 'admin');
+    }
     return NextResponse.redirect(url);
   }
 

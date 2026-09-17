@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   ];
   await writeImageIndex(mergedIndex);
 
-  revalidateTag('selos-images');
+  revalidateTag('selos-images', { expire: 0 });
 
   return NextResponse.json({
     uploaded: uploaded.map((b) => ({ url: b.url, pathname: b.pathname })),

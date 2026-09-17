@@ -16,7 +16,7 @@ async function writeAnnotations(data: Annotations): Promise<void> {
     addRandomSuffix: false,
     allowOverwrite: true,
   });
-  revalidateTag('annotations');
+  revalidateTag('annotations', { expire: 0 });
 }
 
 // Cacheado e invalidado na hora após cada escrita: usa head() (Simple

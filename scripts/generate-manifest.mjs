@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-const selosDir = path.join(__dirname, '..', 'public', 'selos');
+const selosDir = path.join(import.meta.dirname, '..', 'public', 'selos');
 const manifestPath = path.join(selosDir, 'manifest.json');
 
 // Garante que a pasta existe

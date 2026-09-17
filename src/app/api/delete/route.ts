@@ -22,6 +22,6 @@ export async function DELETE(request: NextRequest) {
   const currentIndex = await readImageIndex();
   await writeImageIndex(currentIndex.filter((img) => !urls.includes(img.src)));
 
-  revalidateTag('selos-images');
+  revalidateTag('selos-images', { expire: 0 });
   return NextResponse.json({ success: true });
 }

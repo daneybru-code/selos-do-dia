@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Annotations } from '@/types';
 
 interface BlobImage {
@@ -305,13 +306,13 @@ export default function AdminPage() {
               )}
             </button>
             {process.env.NEXT_PUBLIC_ENABLE_EDITOR === 'true' && (
-              <a href="/editor" className="text-white/80 hover:text-white text-sm transition-colors">
+              <Link href="/editor" className="text-white/80 hover:text-white text-sm transition-colors">
                 Editor de Arte
-              </a>
+              </Link>
             )}
-            <a href="/" className="text-white/80 hover:text-white text-sm transition-colors">
+            <Link href="/" className="text-white/80 hover:text-white text-sm transition-colors">
               ← Ver galeria
-            </a>
+            </Link>
           </div>
         </div>
       </header>

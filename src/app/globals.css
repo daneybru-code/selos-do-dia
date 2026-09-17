@@ -1,6 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-brand-red: #cc0000;
+  --color-brand-orange: #ff6600;
+  --color-brand-yellow: #ffc200;
+  --color-brand-gold: #f5c518;
+  --color-brand-dark: #0d0d0d;
+  --color-brand-card: #1a1a1a;
+}
 
 * {
   box-sizing: border-box;

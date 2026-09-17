@@ -20,6 +20,6 @@ export async function POST(request: NextRequest) {
     contentType: 'application/json',
   });
 
-  revalidateTag('selos-images');
+  revalidateTag('selos-images', { expire: 0 });
   return NextResponse.json({ success: true });
 }

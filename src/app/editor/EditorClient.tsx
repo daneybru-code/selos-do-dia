@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
 /* ── Constantes ── */
 const W = 1920;
@@ -214,8 +215,8 @@ export default function EditorPage() {
             <span className="text-white font-black text-lg uppercase tracking-widest">Editor de Arte</span>
           </div>
           <nav className="flex gap-5 text-sm">
-            <a href="/"      className="text-white/75 hover:text-white transition-colors">Selos do Dia</a>
-            <a href="/admin" className="text-white/75 hover:text-white transition-colors">Admin</a>
+            <Link href="/"      className="text-white/75 hover:text-white transition-colors">Selos do Dia</Link>
+            <Link href="/admin" className="text-white/75 hover:text-white transition-colors">Admin</Link>
           </nav>
         </div>
       </header>

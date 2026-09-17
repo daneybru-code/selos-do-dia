@@ -44,10 +44,10 @@ export default function DefinirSenhaPage() {
         <img src="/logo.png" alt="Globo Esporte" className="h-16 w-fit object-contain mx-auto mb-8" />
 
         <h1 className="font-heading italic text-white text-2xl font-black uppercase tracking-widest mb-1 text-center">
-          Defina sua senha
+          Definir senha
         </h1>
         <p className="text-gray-400 text-sm mb-8 text-center">
-          Escolha uma senha para acessar sua conta
+          Escolha a senha da sua conta
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

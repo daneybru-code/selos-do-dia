@@ -255,6 +255,9 @@ export default function AdminPage() {
             <Link href="/admin/membros" className="text-white/80 hover:text-white text-sm transition-colors">
               Membros
             </Link>
+            <Link href="/definir-senha" className="text-white/80 hover:text-white text-sm transition-colors">
+              Trocar senha
+            </Link>
             <Link href="/" className="text-white/80 hover:text-white text-sm transition-colors">
               ← Ver galeria
             </Link>

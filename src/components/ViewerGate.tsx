@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { ImageData } from '@/types';
 import Gallery from './Gallery';
 import { logout } from '@/app/login/actions';
@@ -45,14 +46,22 @@ export default function ViewerGate({ message }: { message?: string }) {
         style={{ background: 'linear-gradient(135deg, #CC0000 0%, #FF6600 55%, #FFC200 100%)' }}
       >
         <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col items-center gap-3 relative">
-          <form action={logout} className="absolute top-2 right-2 sm:top-4 sm:right-4">
-            <button
-              type="submit"
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center gap-2">
+            <Link
+              href="/definir-senha"
               className="text-white/80 hover:text-white text-xs font-semibold uppercase tracking-wider bg-black/20 hover:bg-black/35 px-3 py-1.5 rounded-full transition-colors"
             >
-              Sair
-            </button>
-          </form>
+              Trocar senha
+            </Link>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="text-white/80 hover:text-white text-xs font-semibold uppercase tracking-wider bg-black/20 hover:bg-black/35 px-3 py-1.5 rounded-full transition-colors"
+              >
+                Sair
+              </button>
+            </form>
+          </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

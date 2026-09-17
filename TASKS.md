@@ -95,21 +95,80 @@ para as duas frentes abaixo partirem do mesmo ponto sem conflito)
 - [x] `.env.example` criado/atualizado documentando as chaves Supabase
 
 ### Fase 3b — Storage e dados (paralelo, em worktree próprio)
-- [ ] Migration `selos` (filename, name, storage_path, uploaded_at, position,
+- [x] Migration `selos` (filename, name, storage_path, uploaded_at, position,
   approved, rejected, note) com RLS (leitura pública, escrita só admin)
-- [ ] Bucket público `selos` criado no Supabase Storage
-- [ ] `api/images` (GET) lê da tabela `selos` (Postgres), não do Blob nem do
+- [x] Bucket público `selos` criado no Supabase Storage
+- [x] `api/images` (GET) lê da tabela `selos` (Postgres), não do Blob nem do
   fallback local
-- [ ] `api/upload` grava no bucket + insere linha na tabela
-- [ ] `api/delete` remove do bucket + deleta linha(s)
-- [ ] `api/reorder` atualiza a coluna `position` em vez de reescrever
+- [x] `api/upload` grava no bucket + insere linha na tabela
+- [x] `api/delete` remove do bucket + deleta linha(s)
+- [x] `api/reorder` atualiza a coluna `position` em vez de reescrever
   `_order.json`
-- [ ] `api/annotations` decomposto: aprovar/rejeitar/nota viram `UPDATE` na
-  própria linha da tabela `selos` (rota pode até deixar de existir,
-  dependendo de como o admin front-end for ajustado)
-- [ ] Script de migração de dados: sobe as 5 imagens de `public/selos/` para
+- [x] `api/annotations` decomposto: aprovar/rejeitar/nota viram `UPDATE` na
+  própria linha da tabela `selos` (rota mantida, sem checagem de admin —
+  intencional, igual ao comportamento anterior)
+- [x] Script de migração de dados: sobe as 5 imagens de `public/selos/` para
   o bucket e cria as linhas correspondentes na tabela
-- [ ] `@vercel/blob` removido do `package.json` depois que nada mais o usa
+- [x] `@vercel/blob` removido do `package.json` depois que nada mais o usa
+
+  Concluído em 2026-09-17 (worktree `wt-storage`, branch
+  `feat/supabase-storage`). Decisões/trade-offs:
+  - Migration `supabase/migrations/20260917142410_create_selos.sql` aplicada
+    via `npx supabase db push` (não SQL manual/dashboard). O bucket `selos`
+    foi criado por `insert into storage.buckets` dentro da própria migration
+    (não via script Node separado) — manter tudo versionado numa migration
+    só pareceu mais simples e igualmente confiável. Ao rodar `db push` a
+    primeira vez, houve o conflito esperado com a migration
+    `20260917142311` aplicada quase ao mesmo tempo pela frente de Auth
+    (paralela); resolvido criando um arquivo placeholder local
+    `20260917142311_remote_placeholder_auth.sql` (comentário explicando que
+    é só um placeholder, o conteúdo real virá no merge da Fase 4) para
+    destravar o `db push`, sem repair/força bruta no histórico remoto.
+  - RLS de escrita em `public.selos` e em `storage.objects` (bucket `selos`)
+    usa `to authenticated` / `auth.role() = 'authenticated'`, não a
+    subquery em `public.profiles` sugerida como alternativa mais fina —
+    porque `profiles` ainda não existia no momento desta migration (é
+    entregue pela frente de Auth). Documentado na própria migration como
+    melhoria de defesa em profundidade recomendada para depois que
+    `profiles` existir. A checagem fina "só admin" já é feita em código via
+    `requireAdmin()` nas rotas de escrita.
+  - `requireAdmin()` (`src/lib/auth/requireAdmin.ts`) ainda não existia
+    nesta worktree — criado aqui como **stub temporário** (sempre retorna
+    `{ ok: true, userId: 'stub' }`, comentário `// TODO` explícito) só para
+    as rotas de upload/delete/reorder poderem chamá-lo sem travar. Deve ser
+    sobrescrito pela implementação real da frente de Auth no merge da
+    Fase 4.
+  - Contrato de `DELETE /api/delete` e `POST /api/reorder` mudou de URLs
+    públicas (`url`/`urls`, `order` de `src`) para `filename`/`filenames` —
+    evita reconstruir a `storage_path` a partir da URL pública do Supabase e
+    reusa o identificador que já é estável em toda a app (anotações já são
+    chaveadas por `filename`). `admin/page.tsx` (único consumidor) foi
+    ajustado de acordo.
+  - `storage_path` é uma versão "slugificada" ASCII do nome do arquivo
+    (sem acentos/travessão) porque a API do Supabase Storage rejeita chaves
+    com esses caracteres (`400 InvalidKey`); `filename`/`name` na tabela
+    continuam com o nome original para exibição.
+  - Tela de senha e header `x-admin-password` removidos de
+    `src/app/admin/page.tsx`; a página carrega os dados direto num
+    `useEffect` de montagem (a proteção de rota é responsabilidade do
+    `proxy.ts` da frente de Auth).
+  - Validado: `npm run build` e `npm run lint` (2 erros remanescentes, não
+    triviais, mesma categoria já documentada na Fase 1 — ver nota abaixo);
+    `npm run dev` + `curl` confirmando que `GET /api/images` devolve as 5
+    imagens com URLs públicas do Supabase, e que cada URL retorna
+    `200 OK`/`Content-Type: image/*` com o tamanho de arquivo correto;
+    testado também que upload sem sessão autenticada é bloqueado pela RLS
+    (esperado, já que o stub de `requireAdmin` não impede nada sozinho — a
+    RLS do banco é a barreira real até a Fase 4).
+  - Lint: `react-hooks/set-state-in-effect` (React Compiler,
+    `eslint-config-next` 16) ainda aponta 1 erro em `src/app/admin/page.tsx`
+    (efeito de carregamento inicial chamando `fetchImages`, que faz
+    `setLoading(true)` antes do primeiro `await` — é o próprio padrão de
+    data-fetching documentado em react.dev) e 1 em `src/components/
+    ViewerGate.tsx` (fora do meu escopo, já documentado na Fase 1). Não
+    corrigidos de propósito — corrigir exigiria reestruturar para Server
+    Components/`use()`, fora do escopo desta fase; comentário explicativo
+    deixado no código em vez de silenciar a regra.
 
 ### Fase 4 — Integração final (sequencial, feita por mim)
 - [ ] Merge das duas branches/worktrees na `feat/supabase-migration`,

@@ -9,6 +9,53 @@ compartilhadas (admin/visualizador) por Supabase Auth com papéis.
 Trabalho feito em branch separada (`feat/supabase-migration`), sem tocar a
 `main` (que continua em produção com o fix de `list()`→`head()` já aplicado).
 
+## Pós-migração — ajustes de UI e fluxo de convite (2026-09-17, mesma branch)
+
+Depois da migração original (Fases 1-4 abaixo), seguiram-se pedidos incrementais
+do usuário, todos ainda na branch `feat/supabase-migration`, sem push:
+
+- [x] Correção de bug real: `* { margin: 0; padding: 0; }` fora de `@layer` em
+  `globals.css` quebrava `mx-auto` (e qualquer utilitário de margin/padding)
+  em TODO o site, por causa de como Cascade Layers funcionam no Tailwind 4
+  (regra fora de layer sempre vence sobre `@layer utilities`, independente de
+  especificidade). Corrigido movendo o reset pra dentro de `@layer base`.
+- [x] Tipografia: títulos em Barlow Condensed (Google Fonts, via `next/font`),
+  itálico, maiúsculo — alternativa gratuita à Acumin/Acumin Condensed
+  (comerciais, não disponíveis pra web).
+- [x] Login redesenhado em layout split-screen (formulário + painel visual),
+  com foto de fundo dinâmica (sorteada entre os selos publicados no Supabase
+  a cada carregamento), logo maior (`h-24`), e diferenciação visual quando a
+  origem do acesso é `/admin` (`?intent=admin` setado pelo proxy) vs a
+  galeria pública — cosmético apenas, a checagem real de papel continua no
+  proxy/`profiles.role`.
+- [x] **Fluxo de convite e gestão de membros** (admin e viewer), já que não
+  existe cadastro público:
+  - `src/lib/supabase/admin.ts` — client com a service role key (`server-only`,
+    nunca importar de Client Component).
+  - `POST /api/members` convida por e-mail (`auth.admin.inviteUserByEmail`) e
+    define o papel (`viewer` por padrão via trigger, promovido a `admin` se
+    pedido); `GET /api/members` lista todos; `PATCH`/`DELETE
+    /api/members/[id]` trocam papel/removem acesso (admin não pode
+    rebaixar/remover a própria conta).
+  - `src/app/auth/confirm/route.ts` (`verifyOtp`) + `/definir-senha` — fluxo
+    de quem recebe o convite definir a própria senha antes de entrar.
+  - `src/app/admin/membros/page.tsx` — tela de convite/gestão dentro do
+    `/admin`.
+  - Configurado no painel do Supabase (projeto `ddgumntklqbwzfyshnbt`):
+    `uri_allow_list` liberando `http://localhost:3000/**` e
+    `https://selos-do-dia.vercel.app/**`, e `disable_signup: true`
+    (cadastro público desabilitado no projeto — só convite admin cria conta).
+  - **Limitação conhecida**: o envio de e-mail usa o serviço embutido do
+    Supabase (sem SMTP próprio configurado), que tem um limite bem baixo de
+    e-mails/hora no plano gratuito — testado e confirmado batendo nesse
+    limite ao convidar duas vezes seguidas rápido demais. Para uso real com
+    volume, considerar configurar um provedor de SMTP próprio (painel do
+    Supabase → Authentication → Emails) antes de convidar muita gente de
+    uma vez.
+  - Testado de ponta a ponta contra o Supabase real (e-mail descartável,
+    depois removido) pela sessão que implementou — convite, criação do
+    perfil via trigger, promoção a admin e remoção funcionaram.
+
 ## Decisões registradas
 
 - 2026-09-17 — Escopo confirmado com o usuário: stack completa (Next 16 +

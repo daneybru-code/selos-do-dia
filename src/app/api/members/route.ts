@@ -51,11 +51,21 @@ export async function POST(request: NextRequest) {
   const adminClient = createAdminClient();
 
   // `generateLink` cria o usuário (mesmo trigger `handle_new_user` populando
-  // `profiles`) e devolve um link pronto em `data.properties.action_link` —
-  // sem depender de SMTP/envio de e-mail. O admin copia o link e manda pra
+  // `profiles`) e devolve, entre outras coisas, um `hashed_token` — sem
+  // depender de SMTP/envio de e-mail. O admin copia o link e manda pra
   // pessoa manualmente (WhatsApp, Slack etc.). Ver teste manual documentado
   // no commit: convidar o mesmo e-mail de novo (ainda não confirmado) gera
   // um novo link válido para o mesmo usuário, em vez de dar erro.
+  //
+  // IMPORTANTE: NÃO use `data.properties.action_link` — esse link passa
+  // primeiro pelo domínio do próprio Supabase (`.../auth/v1/verify?...`),
+  // que verifica o token e só then redireciona pro nosso app usando o fluxo
+  // implícito (tokens de sessão anexados como fragment `#access_token=...`
+  // na URL, não como query string) — algo que nossa rota `/auth/confirm`
+  // (que espera `token_hash`/`type` como query params) não consegue ler, e
+  // que na prática caiu de volta pro Site URL (localhost) em vez do
+  // `redirect_to` configurado. Construímos o link direto pro nosso próprio
+  // domínio com `token_hash`, pulando o hop pelo domínio do Supabase.
   const { data, error } = await adminClient.auth.admin.generateLink({
     type: 'invite',
     email,
@@ -70,7 +80,7 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = data.user.id;
-  const actionLink = data.properties.action_link;
+  const actionLink = `${origin}/auth/confirm?token_hash=${data.properties.hashed_token}&type=invite&next=/definir-senha`;
 
   // Encurta o link do Supabase (gigante, com token na query string) num
   // código curto próprio, resolvido pela rota pública GET /i/[code]. Chance

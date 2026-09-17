@@ -1,81 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { head, put } from '@vercel/blob';
-import { unstable_cache, revalidateTag } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
 import { Annotations } from '@/types';
 
-const BLOB_PREFIX = 'selos/_annotations';
-
-/* ── Helpers ── */
-
-// Nome fixo + allowOverwrite: evita list()+del() extras a cada gravação
-// (antes eram 3 Blob Advanced Operations por escrita; agora é 1).
-async function writeAnnotations(data: Annotations): Promise<void> {
-  await put(`${BLOB_PREFIX}.json`, JSON.stringify(data), {
-    access: 'public',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
-  revalidateTag('annotations', { expire: 0 });
-}
-
-// Cacheado e invalidado na hora após cada escrita: usa head() (Simple
-// Operation) em vez de list() (Advanced Operation) — não consome a cota de
-// 2.000 Advanced Operations/mês do Hobby a cada carregamento da galeria/admin.
-const readAnnotationsCached = unstable_cache(
-  async (): Promise<Annotations> => {
-    try {
-      const info = await head(`${BLOB_PREFIX}.json`);
-      const res = await fetch(info.url, { cache: 'no-store' });
-      if (!res.ok) return {};
-      return await res.json();
-    } catch { return {}; }
-  },
-  ['annotations'],
-  { revalidate: 300, tags: ['annotations'] }
-);
-
-async function readAnnotations(): Promise<Annotations> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return {};
-  return readAnnotationsCached();
-}
-
-/* ── Handlers ── */
+// Sem checagem de admin de propósito: qualquer usuário autenticado pode
+// aprovar/rejeitar/anotar (isso já era assim com o Vercel Blob) — a
+// proteção de "só quem está logado chega aqui" é feita no proxy
+// compartilhado, não nesta rota.
 
 export async function GET() {
-  const annotations = await readAnnotations();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('selos')
+    .select('filename, approved, rejected, note');
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const annotations: Annotations = {};
+  for (const row of data ?? []) {
+    annotations[row.filename] = {
+      approved: row.approved,
+      rejected: row.rejected,
+      note: row.note ?? '',
+    };
+  }
+
   return NextResponse.json(annotations);
 }
 
 export async function POST(request: NextRequest) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: true });
-
-  const { filename, approved, rejected, note } = await request.json() as {
+  const { filename, approved, rejected, note } = (await request.json()) as {
     filename: string;
     approved: boolean;
     rejected: boolean;
     note: string;
   };
 
-  const current = await readAnnotations();
-  await writeAnnotations({
-    ...current,
-    [filename]: {
+  if (!filename) {
+    return NextResponse.json({ error: 'filename não informado' }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('selos')
+    .update({
       approved: Boolean(approved),
       rejected: Boolean(rejected),
       note: String(note ?? ''),
-    },
-  });
+    })
+    .eq('filename', filename);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
 
-// Chamado pelo upload: limpa TODAS as anotações (novo lote = dia novo)
+// Limpa todas as anotações (chamado pelo upload em versões anteriores: novo
+// lote = dia novo). Mantido por compatibilidade, agora como UPDATE em massa
+// em vez de reescrever um blob JSON.
 export async function DELETE() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: true });
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('selos')
+    .update({ approved: false, rejected: false, note: '' })
+    .not('id', 'is', null);
 
-  // Escreve {} diretamente — sem ler estado anterior (evita cache stale)
-  await writeAnnotations({});
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

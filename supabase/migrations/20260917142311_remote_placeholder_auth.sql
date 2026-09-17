@@ -1,0 +1,15 @@
+-- PLACEHOLDER — não editar/remover o conteúdo real aqui.
+--
+-- Esta versão de migration (20260917142311) foi aplicada diretamente no
+-- banco remoto pela frente de trabalho paralela de Autenticação (worktree
+-- separado, branch de auth), que rodou `supabase db push` alguns segundos
+-- antes desta migration de Storage/dados (Fase 3b) ter sido empurrada.
+--
+-- O arquivo real com o SQL de `profiles`/RLS/trigger dessa migration vive
+-- no histórico de commits daquele worktree e será trazido para esta branch
+-- no merge final (Fase 4 do TASKS.md). Este placeholder existe só para que
+-- `supabase db push`/`db pull` não reclamem de "versão remota sem arquivo
+-- local correspondente" ao aplicar a migration seguinte (Fase 3b, tabela
+-- `selos`) a partir deste worktree — ele não é reaplicado (a versão já
+-- consta como aplicada no histórico remoto) e não deve ser tratado como a
+-- fonte de verdade do schema de `profiles`.

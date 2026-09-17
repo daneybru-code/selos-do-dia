@@ -14,9 +14,6 @@ interface BlobImage {
 const LAST_SEEN_KEY = 'selos_admin_last_seen';
 
 export default function AdminPage() {
-  const [authed, setAuthed]               = useState(false);
-  const [password, setPassword]           = useState('');
-  const [authError, setAuthError]         = useState('');
   const [images, setImages]               = useState<BlobImage[]>([]);
   const [loading, setLoading]             = useState(false);
   const [uploading, setUploading]         = useState(false);
@@ -34,21 +31,9 @@ export default function AdminPage() {
   const [saving, setSaving]               = useState(false);
   const [newCount, setNewCount]           = useState(0);
   const fileInputRef                      = useRef<HTMLInputElement>(null);
-  const storedPw                          = useRef('');
   // true quando o próximo fetchImages() é resultado de uma ação do próprio
   // admin (upload/delete), pra não notificar a pessoa sobre a própria ação
   const skipNextNotifyRef                 = useRef(false);
-
-  /* ── Restaura sessão ── */
-  useEffect(() => {
-    const saved = sessionStorage.getItem('admin_pw');
-    if (saved) {
-      storedPw.current = saved;
-      setAuthed(true);
-      fetchImages();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /* ── Lista imagens + anotações ── */
   const fetchImages = useCallback(async () => {
@@ -87,23 +72,22 @@ export default function AdminPage() {
     setNewCount(0);
   }, []);
 
-  /* ── Login ── */
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/auth', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ password }),
-    });
-    if (res.ok) {
-      sessionStorage.setItem('admin_pw', password);
-      storedPw.current = password;
-      setAuthed(true);
-      fetchImages();
-    } else {
-      setAuthError('Senha incorreta');
-    }
-  };
+  /* ── Carrega a lista ao montar — a proteção de rota (só admin autenticado
+     chega aqui) é feita no proxy compartilhado, não nesta página.
+     NOTA (lint conhecido, não corrigido de propósito): `eslint-plugin-
+     react-hooks` v6 (regra `set-state-in-effect`, parte do React Compiler,
+     bundlada no `eslint-config-next` 16) marca isto como "setState síncrono
+     dentro de efeito" porque `fetchImages` chama `setLoading(true)` antes do
+     primeiro `await`. É exatamente o padrão de data-fetching recomendado
+     pela própria documentação do React (ver exemplo "fetching data" em
+     react.dev), então não há uma correção "certa" sem reestruturar para
+     Server Components/`use()`/uma lib de data-fetching — fora do escopo da
+     Fase 3b (Storage/dados). Mesma categoria de erro já documentada em
+     TASKS.md (Fase 1) para `ViewerGate.tsx:38` e para a versão anterior
+     desta página (efeito de restauração de senha, agora removido). ── */
+  useEffect(() => {
+    fetchImages();
+  }, [fetchImages]);
 
   /* ── Upload (uma por uma para não estourar o limite de 4,5 MB) ── */
   const uploadFiles = useCallback(async (files: File[]) => {
@@ -120,9 +104,8 @@ export default function AdminPage() {
       form.append('files', img);
 
       const res = await fetch('/api/upload', {
-        method:  'POST',
-        headers: { 'x-admin-password': storedPw.current },
-        body:    form,
+        method: 'POST',
+        body:   form,
       });
 
       if (res.ok) {
@@ -152,11 +135,11 @@ export default function AdminPage() {
   /* ── Delete individual ── */
   const handleDelete = async (image: BlobImage) => {
     if (!confirm(`Remover "${image.name}"?`)) return;
-    setDeleting(image.src);
+    setDeleting(image.filename);
     await fetch('/api/delete', {
       method:  'DELETE',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': storedPw.current },
-      body:    JSON.stringify({ url: image.src }),
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ filename: image.filename }),
     });
     setDeleting(null);
     fetchImages();
@@ -169,8 +152,8 @@ export default function AdminPage() {
     setDeletingBulk(true);
     await fetch('/api/delete', {
       method:  'DELETE',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': storedPw.current },
-      body:    JSON.stringify({ urls: Array.from(selected) }),
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ filenames: Array.from(selected) }),
     });
     setDeletingBulk(false);
     setSelected(new Set());
@@ -178,11 +161,11 @@ export default function AdminPage() {
     fetchImages();
   };
 
-  const toggleSelect = (src: string) => {
+  const toggleSelect = (filename: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(src)) next.delete(src);
-      else next.add(src);
+      if (next.has(filename)) next.delete(filename);
+      else next.add(filename);
       return next;
     });
   };
@@ -191,7 +174,7 @@ export default function AdminPage() {
     if (selected.size === images.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(images.map((img) => img.src)));
+      setSelected(new Set(images.map((img) => img.filename)));
     }
   };
 
@@ -222,8 +205,8 @@ export default function AdminPage() {
     setSaving(true);
     await fetch('/api/reorder', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': storedPw.current },
-      body:    JSON.stringify({ order: reordered.map((img) => img.src) }),
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ order: reordered.map((img) => img.filename) }),
     });
     setSaving(false);
   };
@@ -233,51 +216,10 @@ export default function AdminPage() {
     setDragOverIndex(null);
   };
 
-  /* ══════════════ TELA DE LOGIN ══════════════ */
-  if (!authed) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center px-4"
-        style={{ backgroundColor: '#0D0D0D' }}
-      >
-        <div
-          className="w-full max-w-sm p-8 rounded-2xl"
-          style={{ backgroundColor: '#1A1A1A' }}
-        >
-          <div className="text-center mb-7">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Globo Esporte" className="h-12 mx-auto mb-4 object-contain" />
-            <h1 className="text-white text-xl font-bold">Admin — Selos do Dia</h1>
-            <p className="text-gray-500 text-sm mt-1">Área restrita</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setAuthError(''); }}
-              className="w-full px-4 py-3 rounded-xl text-white outline-none border-2 border-transparent transition-colors"
-              style={{ backgroundColor: '#2a2a2a', borderColor: authError ? '#CC0000' : 'transparent' }}
-              autoFocus
-            />
-            {authError && (
-              <p className="text-red-400 text-sm text-center">{authError}</p>
-            )}
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl font-bold text-white uppercase tracking-wider transition-opacity hover:opacity-90 active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #CC0000, #FF6600, #FFC200)' }}
-            >
-              Entrar
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   /* ══════════════ PAINEL ADMIN ══════════════ */
+  /* A proteção de rota (só usuário com role admin chega aqui) é feita no
+     proxy compartilhado (src/proxy.ts, frente de trabalho de Auth) — esta
+     página não implementa mais tela/estado de senha. */
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0D0D0D' }}>
 
@@ -461,7 +403,7 @@ export default function AdminPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {images.map((image, index) => {
-                const isSelected    = selected.has(image.src);
+                const isSelected    = selected.has(image.filename);
                 const isDragging    = dragIndex === index;
                 const isDragTarget  = dragOverIndex === index && dragIndex !== index;
                 const ann           = annotations[image.filename] ?? { approved: false, rejected: false, note: '' };
@@ -483,7 +425,7 @@ export default function AdminPage() {
                     onDragOver={(e) => handleCardDragOver(e, index)}
                     onDrop={(e) => handleCardDrop(e, index)}
                     onDragEnd={handleCardDragEnd}
-                    onClick={() => selectMode && toggleSelect(image.src)}
+                    onClick={() => selectMode && toggleSelect(image.filename)}
                   >
                     {/* Thumbnail */}
                     <div className="aspect-video overflow-hidden">
@@ -566,12 +508,12 @@ export default function AdminPage() {
                         {/* Botão remover */}
                         <button
                           className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-white text-base font-bold opacity-0 group-hover:opacity-100 transition-all"
-                          style={{ backgroundColor: deleting === image.src ? '#555' : '#CC0000' }}
+                          style={{ backgroundColor: deleting === image.filename ? '#555' : '#CC0000' }}
                           onClick={(e) => { e.stopPropagation(); handleDelete(image); }}
-                          disabled={deleting === image.src}
+                          disabled={deleting === image.filename}
                           title="Remover selo"
                         >
-                          {deleting === image.src ? '…' : '×'}
+                          {deleting === image.filename ? '…' : '×'}
                         </button>
                       </>
                     )}

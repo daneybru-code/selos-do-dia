@@ -40,3 +40,4 @@ next-env.d.ts
 /IMAGENS/
 /SELOS DO DIA/
 wetransfer_*.zip
+.env*

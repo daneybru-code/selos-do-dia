@@ -240,14 +240,22 @@ para as duas frentes abaixo partirem do mesmo ponto sem conflito)
   do Greenfield (Claude in Chrome não alcança `localhost` desta máquina).
   Recomendo ao usuário testar manualmente em `npm run dev` antes de confiar
   100% no fluxo de UI.
-- [ ] Variáveis de ambiente novas adicionadas no projeto Vercel (Production)
-  — pendente, depende do usuário decidir quando fazer o deploy
-- [ ] Merge para `main` e push — **pendente, aguardando confirmação do
-  usuário**: esta migração troca a autenticação (senha única → login por
-  conta Supabase), o que muda como as pessoas acessam o site em produção.
-  Não fazer merge/push sem o usuário estar ciente disso e sem as env vars já
-  configuradas na Vercel (o deploy quebraria a galeria/admin em produção sem
-  elas).
+- [x] Variáveis de ambiente novas adicionadas no projeto Vercel (Production):
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY` — 2026-09-17, via `vercel env add`.
+- [x] Merge para `main` e push — **feito em 2026-09-17** (commit de merge
+  `ad4ba10`, `feat/supabase-migration` → `main`). Deploy automático
+  confirmado com sucesso (`selos-do-c3sl9ddpo`, Status: Ready). Verificado
+  em produção: `/` e `/api/images` redirecionam pra `/login` sem sessão,
+  `/login` renderiza normalmente com a imagem de fundo dinâmica.
+
+  **Rollback (verificado antes do deploy, ainda válido)**: `ADMIN_PASSWORD`,
+  `VIEWER_PASSWORD` e `BLOB_READ_WRITE_TOKEN` continuam configuradas na
+  Vercel (Production). Reversão instantânea pelo painel da Vercel
+  ("Instant Rollback" pro deployment anterior) ou `git revert` do commit de
+  merge `ad4ba10` na `main` restauram o comportamento anterior (senha única
+  + Vercel Blob) imediatamente, sem perda de dados — o projeto Supabase
+  continua existindo intacto pra retomar depois, se for o caso.
 - [x] `TASKS.md` atualizado com o resultado final
 
 ## Segurança — limitação conhecida (não bloqueante, documentar e decidir depois)

@@ -97,6 +97,24 @@ Pedidos incrementais do usuário, já em produção (`main`), sem branch separad
   limitação de ambiente já registrada nas fases anteriores); pedido ao
   usuário para validar manualmente em `npm run dev` antes/depois do deploy.
 
+## Versionamento (a partir de 2026-09-28)
+
+Adotado versionamento manual leve, sem ferramenta nova:
+
+- `package.json` (`version`) segue [SemVer](https://semver.org/lang/pt-BR/):
+  PATCH pra correção/ajuste interno, MINOR pra funcionalidade nova
+  compatível, MAJOR pra mudança que quebra algo existente.
+- Toda mudança relevante (commit ou grupo de commits de um mesmo pedido)
+  ganha uma entrada no `CHANGELOG.md` (formato Keep a Changelog) junto com o
+  bump de versão, no mesmo commit.
+- Depois do push, criar uma tag git `vX.Y.Z` apontando pro commit e dar
+  `git push origin vX.Y.Z` — assim dá pra ver no GitHub exatamente qual
+  commit corresponde a qual versão em produção.
+- Mensagens de commit continuam no padrão já usado no projeto (`feat:`,
+  `fix:`, `chore:`, `docs:`, `refactor:` — Conventional Commits, mesmo sem
+  automação em cima).
+- Primeira versão sob essa convenção: `0.2.0` (ver `CHANGELOG.md`).
+
 ## Decisões registradas
 
 - 2026-09-17 — Escopo confirmado com o usuário: stack completa (Next 16 +

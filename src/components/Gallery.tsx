@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { ImageData, Annotation, Annotations } from '@/types';
 import Lightbox from './Lightbox';
+import { downloadSelo, shareSeloToWhatsApp } from '@/lib/selo-share';
+import { DownloadIcon, ShareIcon } from './icons';
 
 interface GalleryProps {
   images: ImageData[];
@@ -145,6 +147,33 @@ export default function Gallery({ images }: GalleryProps) {
 
                   <div className="absolute inset-0 flex items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 60%)' }}>
                     <span className="text-white text-xs font-bold uppercase tracking-wide">🔍 Clique para ampliar</span>
+                  </div>
+
+                  {/* Baixar / WhatsApp — sobre a miniatura */}
+                  <div
+                    className="absolute top-2 left-2 flex gap-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => downloadSelo(image.src, image.name)}
+                      aria-label={`Baixar ${image.name}`}
+                      title="Baixar"
+                      className="w-7 h-7 flex items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff' }}
+                    >
+                      <DownloadIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => shareSeloToWhatsApp(image.src, image.name)}
+                      aria-label={`Compartilhar ${image.name} no WhatsApp`}
+                      title="Compartilhar no WhatsApp"
+                      className="w-7 h-7 flex items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95"
+                      style={{ backgroundColor: '#25D366', color: '#fff' }}
+                    >
+                      <ShareIcon className="w-4 h-4" />
+                    </button>
                   </div>
 
                   {ann.approved && (

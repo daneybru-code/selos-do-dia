@@ -56,6 +56,47 @@ do usuário, todos ainda na branch `feat/supabase-migration`, sem push:
     depois removido) pela sessão que implementou — convite, criação do
     perfil via trigger, promoção a admin e remoção funcionaram.
 
+## Pós-migração — baixar/compartilhar selo e atalho pro admin (2026-09-28, `main`)
+
+Pedidos incrementais do usuário, já em produção (`main`), sem branch separada
+(mudanças pequenas e diretas, sem tocar auth/storage/schema):
+
+- [x] **Baixar e compartilhar o selo** (pedido: usuário queria um jeito de
+  baixar/compartilhar a imagem do selo, já que o login/senha em si — decisão
+  tomada direto na Vercel, um usuário admin e um viewer — estava resolvido):
+  - `src/lib/selo-share.ts` — `downloadSelo()` busca a imagem (URL pública do
+    Supabase Storage) via `fetch`, converte pra `Blob`/`File` e força o
+    download client-side (link temporário com `download`), com fallback pra
+    abrir a URL numa aba nova se o fetch falhar (ex.: CORS bloqueado).
+    `shareSeloToWhatsApp()` tenta primeiro a Web Share API nativa
+    (`navigator.share` com o arquivo anexado — no celular isso já mostra o
+    WhatsApp como destino, com a imagem de verdade anexada); se o navegador
+    não suportar (ex.: desktop), cai num link direto `wa.me` com o nome do
+    selo + a URL pública da imagem.
+  - Botões adicionados em dois lugares que já existiam: `Gallery.tsx` (ícones
+    pequenos sempre visíveis no canto superior esquerdo de cada miniatura,
+    sem precisar abrir a imagem ampliada) e `Lightbox.tsx` (botões com texto
+    "Baixar"/"WhatsApp" abaixo da imagem ampliada).
+  - `src/components/icons.tsx` — ícones universais em SVG (seta-pra-baixo +
+    bandeja para download; caixa + seta diagonal pro compartilhar), no lugar
+    dos emojis ⬇/↗ usados na primeira versão — pedido explícito do usuário
+    depois de ver a primeira versão, com exemplos visuais de referência.
+  - Disponível pra qualquer pessoa autenticada em `/` (galeria), que é onde o
+    usuário comum (role `viewer`) passa o tempo todo — não depende de role.
+- [x] **Atalho "Painel admin" na galeria**: quando um admin volta pra `/`
+  (ex.: botão voltar do navegador), agora aparece um link "Painel admin" no
+  cabeçalho (ao lado de "Trocar senha"/"Sair") levando de volta pro `/admin`.
+  `src/app/page.tsx` (Server Component) já checava só a sessão; passou a
+  também consultar `profiles.role` do usuário logado e repassar `isAdmin`
+  pra `ViewerGate.tsx`, que só renderiza o link quando `isAdmin === true`.
+  Não é uma restrição de segurança nova — só atalho de UI; a proteção real de
+  `/admin` continua no `proxy.ts`/checagem de role já existente.
+- Validado: `npx tsc --noEmit`, `eslint` (nos arquivos tocados) e
+  `npm run build` (produção) limpos, sem erros novos. **Não testado no
+  navegador de verdade** nesta sessão — Claude in Chrome não conectou (mesma
+  limitação de ambiente já registrada nas fases anteriores); pedido ao
+  usuário para validar manualmente em `npm run dev` antes/depois do deploy.
+
 ## Decisões registradas
 
 - 2026-09-17 — Escopo confirmado com o usuário: stack completa (Next 16 +

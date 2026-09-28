@@ -18,7 +18,7 @@ function getFormattedDate(): string {
 // A autenticação (sessão Supabase) já é garantida pelo proxy (src/proxy.ts)
 // antes de qualquer request chegar aqui — não há mais senha de visualizador
 // nem sessionStorage. Este componente só renderiza a galeria.
-export default function ViewerGate({ message }: { message?: string }) {
+export default function ViewerGate({ message, isAdmin }: { message?: string; isAdmin?: boolean }) {
   const [images, setImages] = useState<ImageData[]>([]);
   // Data pura (não depende de nada reativo) — computada direto no render em
   // vez de guardada em estado, evitando setState síncrono dentro de effect.
@@ -47,6 +47,14 @@ export default function ViewerGate({ message }: { message?: string }) {
       >
         <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col items-center gap-3 relative">
           <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center gap-2">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="text-white/80 hover:text-white text-xs font-semibold uppercase tracking-wider bg-black/20 hover:bg-black/35 px-3 py-1.5 rounded-full transition-colors"
+              >
+                Painel admin
+              </Link>
+            )}
             <Link
               href="/definir-senha"
               className="text-white/80 hover:text-white text-xs font-semibold uppercase tracking-wider bg-black/20 hover:bg-black/35 px-3 py-1.5 rounded-full transition-colors"

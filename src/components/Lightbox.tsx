@@ -2,6 +2,8 @@
 
 import { useEffect, useCallback } from 'react';
 import { ImageData, Annotations } from '@/types';
+import { downloadSelo, shareSeloToWhatsApp } from '@/lib/selo-share';
+import { DownloadIcon, ShareIcon } from './icons';
 
 interface LightboxProps {
   images: ImageData[];
@@ -117,6 +119,26 @@ export default function Lightbox({
           className="max-h-[62vh] max-w-full object-contain rounded-lg"
           style={{ boxShadow: '0 8px 50px rgba(0,0,0,0.9)' }}
         />
+
+        {/* Baixar / Compartilhar */}
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); downloadSelo(current.src, current.name); }}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold uppercase tracking-wide text-white transition-all hover:opacity-90 active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #CC0000 0%, #FF6600 55%, #FFC200 100%)' }}
+          >
+            <DownloadIcon className="w-4 h-4" /> Baixar
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); shareSeloToWhatsApp(current.src, current.name); }}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-bold uppercase tracking-wide text-white transition-all hover:opacity-90 active:scale-95"
+            style={{ backgroundColor: '#25D366' }}
+          >
+            <ShareIcon className="w-4 h-4" /> WhatsApp
+          </button>
+        </div>
 
         {/* Filmstrip */}
         <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
